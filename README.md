@@ -1,3 +1,20 @@
+
+---
+**Using kiss‑translator on macOS Safari**
+
+1. **Download** the latest release of *kiss‑translator*.  
+2. **Unzip** the archive and move `kiss-translator.app` to `/Applications`.  
+3. **Launch** the app.  
+4. If you see a warning such as  
+   > “`kiss-translator.app` Not Opened – Apple could not verify that it is free of malware…”,  
+   Open **System Settings → Privacy & Security** → "kiss-translator.app was blocked to protect your Mac", and click **Open Anyway**.  
+5. Open Safari, go to **Develop → Developer Settings** and enable **Allow unsigned extensions**.  
+6. Then **Safari → Settings → Extensions** and enable **kiss‑translator** ext.  
+7. The extension is now ready to use.  
+8. *Note:* You must re‑enable **Allow unsigned extensions** in Safari’s developer settings each time you restart the browser.
+---
+
+
 # 简约翻译
 
 [English](README.en.md) | 简体中文
