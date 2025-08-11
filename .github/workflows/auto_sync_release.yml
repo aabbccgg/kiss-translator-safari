@@ -49,6 +49,8 @@ jobs:
       - name: Create release in fork
         if: steps.check_fork_release.outputs.exists == 'false'
         uses: actions/github-script@v6
+        env:
+          RELEASE_BODY: ${{ steps.get_upstream_release.outputs.body }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -58,7 +60,8 @@ jobs:
               repo: context.repo.repo,
               tag_name: '${{ steps.get_upstream_release.outputs.tag_name }}',
               name: '${{ steps.get_upstream_release.outputs.name }}',
-              body: '${{ steps.get_upstream_release.outputs.body }}',
-              prerelease: false, // 你可以根据需要调整
+              // Read the body from the environment variable
+              body: process.env.RELEASE_BODY,
+              prerelease: false,
               draft: false,
             });
