@@ -1,0 +1,64 @@
+name: Sync Upstream Releases
+
+on:
+  workflow_dispatch:  # 允许手动触发
+  schedule:
+    - cron: '0 8 * * *' # 每天 UTC 时间早上 8 点运行一次
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get latest release from upstream
+        id: get_upstream_release
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { data: latest_release } = await github.rest.repos.getLatestRelease({
+              owner: 'fishjar',
+              repo: 'kiss-translator',
+            });
+            console.log(`Latest upstream release is ${latest_release.tag_name}`);
+            core.setOutput('tag_name', latest_release.tag_name);
+            core.setOutput('name', latest_release.name);
+            core.setOutput('body', latest_release.body);
+            return latest_release.tag_name;
+
+      - name: Check if release already exists in fork
+        id: check_fork_release
+        uses: actions/github-script@v6
+        with:
+          script: |
+            try {
+              const { data: release } = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag: '${{ steps.get_upstream_release.outputs.tag_name }}',
+              });
+              console.log('Release already exists in fork.');
+              core.setOutput('exists', 'true');
+            } catch (error) {
+              if (error.status === 404) {
+                console.log('Release does not exist in fork. Proceeding to create it.');
+                core.setOutput('exists', 'false');
+              } else {
+                throw error;
+              }
+            }
+
+      - name: Create release in fork
+        if: steps.check_fork_release.outputs.exists == 'false'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            console.log('Creating release ${{ steps.get_upstream_release.outputs.tag_name }} in fork.');
+            await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: '${{ steps.get_upstream_release.outputs.tag_name }}',
+              name: '${{ steps.get_upstream_release.outputs.name }}',
+              body: '${{ steps.get_upstream_release.outputs.body }}',
+              prerelease: false, // 你可以根据需要调整
+              draft: false,
+            });
