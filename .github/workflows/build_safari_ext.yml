@@ -1,0 +1,69 @@
+name: Build Safari Extension Unsigned
+
+on:
+  workflow_dispatch: 
+    inputs:
+      tag:
+        description: 'The version tag to upload the release asset to'
+        required: true
+        type: string
+  release:
+    types: [created]
+
+jobs:
+  build:
+    env:
+      ext_name: kiss-translator
+      ext_identifier: com.kiss-translator.mac
+      ext_generate_file: generated-safari-ext
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Dependencies and Build for Chrome
+        run: |
+          npm install -g pnpm
+          pnpm install
+          pnpm build:chrome
+
+      - name: Convert WebExtension → Safari Xcode Project
+        run: |
+          xcrun safari-web-extension-converter ./build/chrome \
+            --project-location ${{env.ext_generate_file}} \
+            --app-name ${{env.ext_name}} \
+            --bundle-identifier ${{env.ext_identifier}} \
+            --macos-only --no-open --force
+
+      - name: Build Unsigned Safari Extension
+        run: |
+          xcodebuild clean build \
+            -project ${{env.ext_generate_file}}/${{env.ext_name}}/${{env.ext_name}}.xcodeproj \
+            -scheme ${{env.ext_name}} \
+            -configuration Release \
+            -derivedDataPath ${{env.ext_generate_file}}/build\
+            CODE_SIGN_IDENTITY="-"
+
+      - name: List generated files
+        run: |
+          echo "=== Generated directory ==="
+          ls -R ${{env.ext_generate_file}}
+
+      - name: Package Application into a Zip file
+        run: |
+          cd ${{env.ext_generate_file}}/build/Build/Products/Release/
+          ditto -c -k --sequesterRsrc --keepParent ${{env.ext_name}}.app ${{env.ext_name}}.zip
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: safari-extension-unsigned
+          path: ${{env.ext_generate_file}}/build/Build/Products/Release/${{env.ext_name}}.zip
+      
+      - name: Upload Asset to Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload \
+            ${{ github.event.release.tag_name }} \
+            ${{env.ext_generate_file}}/build/Build/Products/Release/kiss-translator.zip \
+            --clobber
