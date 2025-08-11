@@ -52,7 +52,7 @@ jobs:
         env:
           RELEASE_BODY: ${{ steps.get_upstream_release.outputs.body }}
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.PAT }}
           script: |
             console.log('Creating release ${{ steps.get_upstream_release.outputs.tag_name }} in fork.');
             await github.rest.repos.createRelease({
