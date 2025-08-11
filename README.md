@@ -2,7 +2,7 @@
 ---
 **Using kiss‑translator on macOS Safari**
 
-1. **Download** the latest release of *kiss‑translator*.  
+1. **Download** the latest release of *kiss‑translator* in this repository.  
 2. **Unzip** the archive and move `kiss-translator.app` to `/Applications`.  
 3. **Launch** the app.  
 4. If you see a warning such as  
