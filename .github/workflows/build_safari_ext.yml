@@ -51,13 +51,13 @@ jobs:
       - name: Package Application into a Zip file
         run: |
           cd ${{env.ext_generate_file}}/build/Build/Products/Release/
-          ditto -c -k --sequesterRsrc --keepParent ${{env.ext_name}}.app ${{env.ext_name}}.zip
+          ditto -c -k --sequesterRsrc --keepParent ${{env.ext_name}}.app ${{env.ext_name}}-Safari.zip
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
           name: safari-extension-unsigned
-          path: ${{env.ext_generate_file}}/build/Build/Products/Release/${{env.ext_name}}.zip
+          path: ${{env.ext_generate_file}}/build/Build/Products/Release/${{env.ext_name}}-Safari.zip
       
       - name: Upload Asset to Release
         env:
@@ -65,5 +65,5 @@ jobs:
         run: |
           gh release upload \
             ${{ github.event.release.tag_name || inputs.tag }} \
-            ${{env.ext_generate_file}}/build/Build/Products/Release/kiss-translator.zip \
+            ${{env.ext_generate_file}}/build/Build/Products/Release/${{env.ext_name}}-Safari.zip \
             --clobber
