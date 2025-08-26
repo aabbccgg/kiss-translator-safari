@@ -20,6 +20,7 @@ import {
   OPT_TRANS_OLLAMA,
   OPT_TRANS_OLLAMA_2,
   OPT_TRANS_OLLAMA_3,
+  OPT_TRANS_OPENROUTER,
   OPT_TRANS_CUSTOMIZE,
   OPT_TRANS_CUSTOMIZE_2,
   OPT_TRANS_CUSTOMIZE_3,
@@ -39,6 +40,7 @@ import { msAuth } from "../libs/auth";
 import { genDeeplFree } from "./deepl";
 import { genBaidu } from "./baidu";
 import interpreter from "../libs/interpreter";
+import { parseJsonObj } from "../libs/utils";
 
 const keyMap = new Map();
 const urlMap = new Map();
@@ -240,6 +242,8 @@ const genOpenAI = ({
   model,
   temperature,
   maxTokens,
+  customHeader,
+  customBody,
 }) => {
   // 兼容历史上作为systemPrompt的prompt，如果prompt中不包含带翻译文本，则添加文本到prompt末尾
   // if (!prompt.includes(INPUT_PLACE_TEXT)) {
@@ -253,6 +257,10 @@ const genOpenAI = ({
     .replaceAll(INPUT_PLACE_FROM, from)
     .replaceAll(INPUT_PLACE_TO, to)
     .replaceAll(INPUT_PLACE_TEXT, text);
+
+  // TODO: 同时支持json对象和hook函数
+  customHeader = parseJsonObj(customHeader);
+  customBody = parseJsonObj(customBody);
 
   const data = {
     model,
@@ -268,6 +276,7 @@ const genOpenAI = ({
     ],
     temperature,
     max_completion_tokens: maxTokens,
+    ...customBody,
   };
 
   const init = {
@@ -275,6 +284,7 @@ const genOpenAI = ({
       "Content-type": "application/json",
       Authorization: `Bearer ${key}`, // OpenAI
       "api-key": key, // Azure OpenAI
+      ...customHeader,
     },
     method: "POST",
     body: JSON.stringify(data),
@@ -294,6 +304,8 @@ const genGemini = ({
   model,
   temperature,
   maxTokens,
+  customHeader,
+  customBody,
 }) => {
   url = url
     .replaceAll(INPUT_PLACE_MODEL, model)
@@ -306,6 +318,9 @@ const genGemini = ({
     .replaceAll(INPUT_PLACE_FROM, from)
     .replaceAll(INPUT_PLACE_TO, to)
     .replaceAll(INPUT_PLACE_TEXT, text);
+
+  customHeader = parseJsonObj(customHeader);
+  customBody = parseJsonObj(customBody);
 
   const data = {
     system_instruction: {
@@ -325,11 +340,13 @@ const genGemini = ({
       // topP: 0.8,
       // topK: 10,
     },
+    ...customBody,
   };
 
   const init = {
     headers: {
       "Content-type": "application/json",
+      ...customHeader,
     },
     method: "POST",
     body: JSON.stringify(data),
@@ -349,6 +366,8 @@ const genGemini2 = ({
   model,
   temperature,
   maxTokens,
+  customHeader,
+  customBody,
 }) => {
   systemPrompt = systemPrompt
     .replaceAll(INPUT_PLACE_FROM, from)
@@ -358,6 +377,9 @@ const genGemini2 = ({
     .replaceAll(INPUT_PLACE_FROM, from)
     .replaceAll(INPUT_PLACE_TO, to)
     .replaceAll(INPUT_PLACE_TEXT, text);
+
+  customHeader = parseJsonObj(customHeader);
+  customBody = parseJsonObj(customBody);
 
   const data = {
     model,
@@ -373,12 +395,14 @@ const genGemini2 = ({
     ],
     temperature,
     max_tokens: maxTokens,
+    ...customBody,
   };
 
   const init = {
     headers: {
       "Content-type": "application/json",
       Authorization: `Bearer ${key}`,
+      ...customHeader,
     },
     method: "POST",
     body: JSON.stringify(data),
@@ -398,6 +422,8 @@ const genClaude = ({
   model,
   temperature,
   maxTokens,
+  customHeader,
+  customBody,
 }) => {
   systemPrompt = systemPrompt
     .replaceAll(INPUT_PLACE_FROM, from)
@@ -407,6 +433,9 @@ const genClaude = ({
     .replaceAll(INPUT_PLACE_FROM, from)
     .replaceAll(INPUT_PLACE_TO, to)
     .replaceAll(INPUT_PLACE_TEXT, text);
+
+  customHeader = parseJsonObj(customHeader);
+  customBody = parseJsonObj(customBody);
 
   const data = {
     model,
@@ -419,13 +448,72 @@ const genClaude = ({
     ],
     temperature,
     max_tokens: maxTokens,
+    ...customBody,
   };
 
   const init = {
     headers: {
       "Content-type": "application/json",
       "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
       "x-api-key": key,
+      ...customHeader,
+    },
+    method: "POST",
+    body: JSON.stringify(data),
+  };
+
+  return [url, init];
+};
+
+const genOpenRouter = ({
+  text,
+  from,
+  to,
+  url,
+  key,
+  systemPrompt,
+  userPrompt,
+  model,
+  temperature,
+  maxTokens,
+  customHeader,
+  customBody,
+}) => {
+  systemPrompt = systemPrompt
+    .replaceAll(INPUT_PLACE_FROM, from)
+    .replaceAll(INPUT_PLACE_TO, to)
+    .replaceAll(INPUT_PLACE_TEXT, text);
+  userPrompt = userPrompt
+    .replaceAll(INPUT_PLACE_FROM, from)
+    .replaceAll(INPUT_PLACE_TO, to)
+    .replaceAll(INPUT_PLACE_TEXT, text);
+
+  customHeader = parseJsonObj(customHeader);
+  customBody = parseJsonObj(customBody);
+
+  const data = {
+    model,
+    messages: [
+      {
+        role: "system",
+        content: systemPrompt,
+      },
+      {
+        role: "user",
+        content: userPrompt,
+      },
+    ],
+    temperature,
+    max_tokens: maxTokens,
+    ...customBody,
+  };
+
+  const init = {
+    headers: {
+      "Content-type": "application/json",
+      Authorization: `Bearer ${key}`,
+      ...customHeader,
     },
     method: "POST",
     body: JSON.stringify(data),
@@ -444,6 +532,8 @@ const genOllama = ({
   systemPrompt,
   userPrompt,
   model,
+  customHeader,
+  customBody,
 }) => {
   systemPrompt = systemPrompt
     .replaceAll(INPUT_PLACE_FROM, from)
@@ -454,17 +544,22 @@ const genOllama = ({
     .replaceAll(INPUT_PLACE_TO, to)
     .replaceAll(INPUT_PLACE_TEXT, text);
 
+  customHeader = parseJsonObj(customHeader);
+  customBody = parseJsonObj(customBody);
+
   const data = {
     model,
     system: systemPrompt,
     prompt: userPrompt,
     think: think,
     stream: false,
+    ...customBody,
   };
 
   const init = {
     headers: {
       "Content-type": "application/json",
+      ...customHeader,
     },
     method: "POST",
     body: JSON.stringify(data),
@@ -549,6 +644,7 @@ export const genTransReq = ({ translator, text, from, to }, apiSetting) => {
     case OPT_TRANS_OLLAMA:
     case OPT_TRANS_OLLAMA_2:
     case OPT_TRANS_OLLAMA_3:
+    case OPT_TRANS_OPENROUTER:
     case OPT_TRANS_NIUTRANS:
     case OPT_TRANS_CUSTOMIZE:
     case OPT_TRANS_CUSTOMIZE_2:
@@ -600,6 +696,8 @@ export const genTransReq = ({ translator, text, from, to }, apiSetting) => {
     case OPT_TRANS_OLLAMA_2:
     case OPT_TRANS_OLLAMA_3:
       return genOllama(args);
+    case OPT_TRANS_OPENROUTER:
+      return genOpenRouter(args);
     case OPT_TRANS_CUSTOMIZE:
     case OPT_TRANS_CUSTOMIZE_2:
     case OPT_TRANS_CUSTOMIZE_3:

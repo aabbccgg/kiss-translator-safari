@@ -24,6 +24,7 @@ import {
   OPT_TRANS_OLLAMA,
   OPT_TRANS_OLLAMA_2,
   OPT_TRANS_OLLAMA_3,
+  OPT_TRANS_OPENROUTER,
   OPT_TRANS_CUSTOMIZE,
   OPT_TRANS_CUSTOMIZE_2,
   OPT_TRANS_CUSTOMIZE_3,
@@ -125,6 +126,8 @@ function ApiFields({ translator, api, updateApi, resetApi }) {
     model = "",
     systemPrompt = "",
     userPrompt = "",
+    customHeader = "",
+    customBody = "",
     think = false,
     thinkIgnore = "",
     fetchLimit = DEFAULT_FETCH_LIMIT,
@@ -185,6 +188,7 @@ function ApiFields({ translator, api, updateApi, resetApi }) {
     OPT_TRANS_OLLAMA,
     OPT_TRANS_OLLAMA_2,
     OPT_TRANS_OLLAMA_3,
+    OPT_TRANS_OPENROUTER,
     OPT_TRANS_NIUTRANS,
     OPT_TRANS_CUSTOMIZE,
     OPT_TRANS_CUSTOMIZE_2,
@@ -247,6 +251,7 @@ function ApiFields({ translator, api, updateApi, resetApi }) {
       {(translator.startsWith(OPT_TRANS_OPENAI) ||
         translator.startsWith(OPT_TRANS_OLLAMA) ||
         translator === OPT_TRANS_CLAUDE ||
+        translator === OPT_TRANS_OPENROUTER ||
         translator.startsWith(OPT_TRANS_GEMINI)) && (
         <>
           <TextField
@@ -273,6 +278,26 @@ function ApiFields({ translator, api, updateApi, resetApi }) {
             onChange={handleChange}
             multiline
             maxRows={10}
+          />
+          <TextField
+            size="small"
+            label={i18n("custom_header")}
+            name="customHeader"
+            value={customHeader}
+            onChange={handleChange}
+            multiline
+            maxRows={10}
+            helperText={i18n("custom_header_help")}
+          />
+          <TextField
+            size="small"
+            label={i18n("custom_body")}
+            name="customBody"
+            value={customBody}
+            onChange={handleChange}
+            multiline
+            maxRows={10}
+            helperText={i18n("custom_body_help")}
           />
         </>
       )}
@@ -302,6 +327,7 @@ function ApiFields({ translator, api, updateApi, resetApi }) {
 
       {(translator.startsWith(OPT_TRANS_OPENAI) ||
         translator === OPT_TRANS_CLAUDE ||
+        translator === OPT_TRANS_OPENROUTER ||
         translator === OPT_TRANS_GEMINI ||
         translator === OPT_TRANS_GEMINI_2) && (
         <>

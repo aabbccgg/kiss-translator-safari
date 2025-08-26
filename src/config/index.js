@@ -136,6 +136,7 @@ export const OPT_TRANS_CLOUDFLAREAI = "CloudflareAI";
 export const OPT_TRANS_OLLAMA = "Ollama";
 export const OPT_TRANS_OLLAMA_2 = "Ollama2";
 export const OPT_TRANS_OLLAMA_3 = "Ollama3";
+export const OPT_TRANS_OPENROUTER = "OpenRouter";
 export const OPT_TRANS_CUSTOMIZE = "Custom";
 export const OPT_TRANS_CUSTOMIZE_2 = "Custom2";
 export const OPT_TRANS_CUSTOMIZE_3 = "Custom3";
@@ -162,6 +163,7 @@ export const OPT_TRANS_ALL = [
   OPT_TRANS_OLLAMA,
   OPT_TRANS_OLLAMA_2,
   OPT_TRANS_OLLAMA_3,
+  OPT_TRANS_OPENROUTER,
   OPT_TRANS_CUSTOMIZE,
   OPT_TRANS_CUSTOMIZE_2,
   OPT_TRANS_CUSTOMIZE_3,
@@ -331,6 +333,9 @@ export const OPT_LANGS_SPECIAL = {
   [OPT_TRANS_OLLAMA_3]: new Map(
     OPT_LANGS_FROM.map(([key, val]) => [key, val.split(" - ")[0]])
   ),
+  [OPT_TRANS_OPENROUTER]: new Map(
+    OPT_LANGS_FROM.map(([key, val]) => [key, val.split(" - ")[0]])
+  ),
   [OPT_TRANS_CLOUDFLAREAI]: new Map([
     ["auto", ""],
     ["zh-CN", "chinese"],
@@ -391,6 +396,7 @@ export const OPT_STYLE_NONE = "style_none"; // 无
 export const OPT_STYLE_LINE = "under_line"; // 下划线
 export const OPT_STYLE_DOTLINE = "dot_line"; // 点状线
 export const OPT_STYLE_DASHLINE = "dash_line"; // 虚线
+export const OPT_STYLE_DASHBOX = "dash_box"; // 虚线框
 export const OPT_STYLE_WAVYLINE = "wavy_line"; // 波浪线
 export const OPT_STYLE_FUZZY = "fuzzy"; // 模糊
 export const OPT_STYLE_HIGHLIGHT = "highlight"; // 高亮
@@ -401,6 +407,7 @@ export const OPT_STYLE_ALL = [
   OPT_STYLE_LINE,
   OPT_STYLE_DOTLINE,
   OPT_STYLE_DASHLINE,
+  OPT_STYLE_DASHBOX,
   OPT_STYLE_WAVYLINE,
   OPT_STYLE_FUZZY,
   OPT_STYLE_HIGHLIGHT,
@@ -411,6 +418,7 @@ export const OPT_STYLE_USE_COLOR = [
   OPT_STYLE_LINE,
   OPT_STYLE_DOTLINE,
   OPT_STYLE_DASHLINE,
+  OPT_STYLE_DASHBOX,
   OPT_STYLE_WAVYLINE,
   OPT_STYLE_HIGHLIGHT,
   OPT_STYLE_BLOCKQUOTE,
@@ -563,6 +571,8 @@ const defaultOpenaiApi = {
   model: "gpt-4",
   systemPrompt: `You are a professional, authentic machine translation engine.`,
   userPrompt: `Translate the following source text from ${INPUT_PLACE_FROM} to ${INPUT_PLACE_TO}. Output translation directly without any additional text.\n\nSource Text: ${INPUT_PLACE_TEXT}\n\nTranslated Text:`,
+  customHeader: "",
+  customBody: "",
   temperature: 0,
   maxTokens: 256,
   fetchLimit: 1,
@@ -577,6 +587,8 @@ const defaultOllamaApi = {
   model: "llama3.1",
   systemPrompt: `You are a professional, authentic machine translation engine.`,
   userPrompt: `Translate the following source text from ${INPUT_PLACE_FROM} to ${INPUT_PLACE_TO}. Output translation directly without any additional text.\n\nSource Text: ${INPUT_PLACE_TEXT}\n\nTranslated Text:`,
+  customHeader: "",
+  customBody: "",
   think: false,
   thinkIgnore: `qwen3,deepseek-r1`,
   fetchLimit: 1,
@@ -677,6 +689,8 @@ export const DEFAULT_TRANS_APIS = {
     model: "gemini-2.5-flash",
     systemPrompt: `You are a professional, authentic machine translation engine.`,
     userPrompt: `Translate the following source text from ${INPUT_PLACE_FROM} to ${INPUT_PLACE_TO}. Output translation directly without any additional text.\n\nSource Text: ${INPUT_PLACE_TEXT}\n\nTranslated Text:`,
+    customHeader: "",
+    customBody: "",
     temperature: 0,
     maxTokens: 2048,
     fetchLimit: 1,
@@ -691,6 +705,8 @@ export const DEFAULT_TRANS_APIS = {
     model: "gemini-2.0-flash",
     systemPrompt: `You are a professional, authentic machine translation engine.`,
     userPrompt: `Translate the following source text from ${INPUT_PLACE_FROM} to ${INPUT_PLACE_TO}. Output translation directly without any additional text.\n\nSource Text: ${INPUT_PLACE_TEXT}\n\nTranslated Text:`,
+    customHeader: "",
+    customBody: "",
     temperature: 0,
     maxTokens: 2048,
     fetchLimit: 1,
@@ -705,6 +721,8 @@ export const DEFAULT_TRANS_APIS = {
     model: "claude-3-haiku-20240307",
     systemPrompt: `You are a professional, authentic machine translation engine.`,
     userPrompt: `Translate the following source text from ${INPUT_PLACE_FROM} to ${INPUT_PLACE_TO}. Output translation directly without any additional text.\n\nSource Text: ${INPUT_PLACE_TEXT}\n\nTranslated Text:`,
+    customHeader: "",
+    customBody: "",
     temperature: 0,
     maxTokens: 1024,
     fetchLimit: 1,
@@ -725,6 +743,22 @@ export const DEFAULT_TRANS_APIS = {
   [OPT_TRANS_OLLAMA]: defaultOllamaApi,
   [OPT_TRANS_OLLAMA_2]: defaultOllamaApi,
   [OPT_TRANS_OLLAMA_3]: defaultOllamaApi,
+  [OPT_TRANS_OPENROUTER]: {
+    url: "https://openrouter.ai/api/v1/chat/completions",
+    key: "",
+    model: "openai/gpt-4o",
+    systemPrompt: `You are a professional, authentic machine translation engine.`,
+    userPrompt: `Translate the following source text from ${INPUT_PLACE_FROM} to ${INPUT_PLACE_TO}. Output translation directly without any additional text.\n\nSource Text: ${INPUT_PLACE_TEXT}\n\nTranslated Text:`,
+    customHeader: "",
+    customBody: "",
+    temperature: 0,
+    maxTokens: 256,
+    fetchLimit: 1,
+    fetchInterval: 500,
+    apiName: OPT_TRANS_OPENROUTER,
+    isDisabled: false,
+    httpTimeout: DEFAULT_HTTP_TIMEOUT * 2,
+  },
   [OPT_TRANS_CUSTOMIZE]: defaultCustomApi,
   [OPT_TRANS_CUSTOMIZE_2]: defaultCustomApi,
   [OPT_TRANS_CUSTOMIZE_3]: defaultCustomApi,
