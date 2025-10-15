@@ -9,6 +9,26 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout fork repository
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.PAT }}
+          fetch-depth: 0
+      
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/fishjar/kiss-translator.git
+          git fetch upstream
+      
+      - name: Merge upstream changes
+        run: |
+          git checkout main  # 或你的默认分支
+          git merge upstream/main --allow-unrelated-histories
+      
+      - name: Push changes
+        run: |
+          git push origin main
+    
       - name: Get latest release from upstream
         id: get_upstream_release
         uses: actions/github-script@v6
