@@ -3,7 +3,7 @@ name: Sync Upstream Releases
 on:
   workflow_dispatch:  # 允许手动触发
   schedule:
-    - cron: '0 8 * * *' # 每天 UTC 时间早上 8 点运行一次
+    - cron: '0 * * * *' # 每天 1小时 运行一次
 
 jobs:
   sync:
