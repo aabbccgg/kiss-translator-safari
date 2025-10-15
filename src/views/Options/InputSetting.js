@@ -4,7 +4,6 @@ import TextField from "@mui/material/TextField";
 import MenuItem from "@mui/material/MenuItem";
 import { useI18n } from "../../hooks/I18n";
 import {
-  OPT_TRANS_ALL,
   OPT_LANGS_FROM,
   OPT_LANGS_TO,
   OPT_INPUT_TRANS_SIGNS,
@@ -15,21 +14,17 @@ import Switch from "@mui/material/Switch";
 import { useInputRule } from "../../hooks/InputRule";
 import { useCallback } from "react";
 import Grid from "@mui/material/Grid";
-import { limitNumber } from "../../libs/utils";
+import { useApiList } from "../../hooks/Api";
+import ValidationInput from "../../hooks/ValidationInput";
 
 export default function InputSetting() {
   const i18n = useI18n();
   const { inputRule, updateInputRule } = useInputRule();
+  const { enabledApis } = useApiList();
 
   const handleChange = (e) => {
     e.preventDefault();
     let { name, value } = e.target;
-    switch (name) {
-      case "triggerTime":
-        value = limitNumber(value, 10, 1000);
-        break;
-      default:
-    }
     updateInputRule({
       [name]: value,
     });
@@ -44,7 +39,7 @@ export default function InputSetting() {
 
   const {
     transOpen,
-    translator,
+    apiSlug,
     fromLang,
     toLang,
     triggerShortcut,
@@ -68,73 +63,87 @@ export default function InputSetting() {
             />
           }
           label={i18n("use_input_box_translation")}
+          sx={{ width: "fit-content" }}
         />
-
-        <TextField
-          select
-          size="small"
-          name="translator"
-          value={translator}
-          label={i18n("translate_service")}
-          onChange={handleChange}
-        >
-          {OPT_TRANS_ALL.map((item) => (
-            <MenuItem key={item} value={item}>
-              {item}
-            </MenuItem>
-          ))}
-        </TextField>
-
-        <TextField
-          select
-          size="small"
-          name="fromLang"
-          value={fromLang}
-          label={i18n("from_lang")}
-          onChange={handleChange}
-        >
-          {OPT_LANGS_FROM.map(([lang, name]) => (
-            <MenuItem key={lang} value={lang}>
-              {name}
-            </MenuItem>
-          ))}
-        </TextField>
-
-        <TextField
-          select
-          size="small"
-          name="toLang"
-          value={toLang}
-          label={i18n("to_lang")}
-          onChange={handleChange}
-        >
-          {OPT_LANGS_TO.map(([lang, name]) => (
-            <MenuItem key={lang} value={lang}>
-              {name}
-            </MenuItem>
-          ))}
-        </TextField>
-
-        <TextField
-          select
-          size="small"
-          name="transSign"
-          value={transSign}
-          label={i18n("input_trans_start_sign")}
-          onChange={handleChange}
-          helperText={i18n("input_trans_start_sign_help")}
-        >
-          <MenuItem value={""}>{i18n("style_none")}</MenuItem>
-          {OPT_INPUT_TRANS_SIGNS.map((item) => (
-            <MenuItem key={item} value={item}>
-              {item}
-            </MenuItem>
-          ))}
-        </TextField>
 
         <Box>
           <Grid container spacing={2} columns={12}>
-            <Grid item xs={12} sm={12} md={4} lg={4}>
+            <Grid item xs={12} sm={12} md={6} lg={3}>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                name="apiSlug"
+                value={apiSlug}
+                label={i18n("translate_service")}
+                onChange={handleChange}
+              >
+                {enabledApis.map((api) => (
+                  <MenuItem key={api.apiSlug} value={api.apiSlug}>
+                    {api.apiName}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={12} md={6} lg={3}>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                name="fromLang"
+                value={fromLang}
+                label={i18n("from_lang")}
+                onChange={handleChange}
+              >
+                {OPT_LANGS_FROM.map(([lang, name]) => (
+                  <MenuItem key={lang} value={lang}>
+                    {name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={12} md={6} lg={3}>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                name="toLang"
+                value={toLang}
+                label={i18n("to_lang")}
+                onChange={handleChange}
+              >
+                {OPT_LANGS_TO.map(([lang, name]) => (
+                  <MenuItem key={lang} value={lang}>
+                    {name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={12} md={6} lg={3}>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                name="transSign"
+                value={transSign}
+                label={i18n("input_trans_start_sign")}
+                onChange={handleChange}
+                helperText={i18n("input_trans_start_sign_help")}
+              >
+                <MenuItem value={""}>{i18n("style_none")}</MenuItem>
+                {OPT_INPUT_TRANS_SIGNS.map((item) => (
+                  <MenuItem key={item} value={item}>
+                    {item}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+          </Grid>
+        </Box>
+
+        <Box>
+          <Grid container spacing={2} columns={12}>
+            <Grid item xs={12} sm={12} md={6} lg={3}>
               <ShortcutInput
                 value={triggerShortcut}
                 onChange={handleShortcutInput}
@@ -142,7 +151,7 @@ export default function InputSetting() {
                 helperText={i18n("trigger_trans_shortcut_help")}
               />
             </Grid>
-            <Grid item xs={12} sm={12} md={4} lg={4}>
+            <Grid item xs={12} sm={12} md={6} lg={3}>
               <TextField
                 select
                 fullWidth
@@ -159,15 +168,17 @@ export default function InputSetting() {
                 ))}
               </TextField>
             </Grid>
-            <Grid item xs={12} sm={12} md={4} lg={4}>
-              <TextField
+            <Grid item xs={12} sm={12} md={6} lg={3}>
+              <ValidationInput
                 fullWidth
                 size="small"
                 label={i18n("combo_timeout")}
                 type="number"
                 name="triggerTime"
-                defaultValue={triggerTime}
+                value={triggerTime}
                 onChange={handleChange}
+                min={10}
+                max={1000}
               />
             </Grid>
           </Grid>

@@ -14,6 +14,8 @@ import ApiIcon from "@mui/icons-material/Api";
 import InputIcon from "@mui/icons-material/Input";
 import SelectAllIcon from "@mui/icons-material/SelectAll";
 import EventNoteIcon from "@mui/icons-material/EventNote";
+import MouseIcon from "@mui/icons-material/Mouse";
+import SubtitlesIcon from "@mui/icons-material/Subtitles";
 
 function LinkItem({ label, url, icon }) {
   const match = useMatch(url);
@@ -53,6 +55,18 @@ export default function Navigator(props) {
       icon: <SelectAllIcon />,
     },
     {
+      id: "mousehover_translate",
+      label: i18n("mousehover_translate"),
+      url: "/mousehover",
+      icon: <MouseIcon />,
+    },
+    {
+      id: "subtitle_translate",
+      label: i18n("subtitle_translate"),
+      url: "/subtitle",
+      icon: <SubtitlesIcon />,
+    },
+    {
       id: "apis_setting",
       label: i18n("apis_setting"),
       url: "/apis",
@@ -68,6 +82,12 @@ export default function Navigator(props) {
       id: "words",
       label: i18n("favorite_words"),
       url: "/words",
+      icon: <EventNoteIcon />,
+    },
+    {
+      id: "playground",
+      label: "Playground",
+      url: "/playground",
       icon: <EventNoteIcon />,
     },
     { id: "about", label: i18n("about"), url: "/about", icon: <InfoIcon /> },

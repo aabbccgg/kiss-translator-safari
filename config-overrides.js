@@ -32,6 +32,7 @@ const extWebpack = (config, env) => {
     options: paths.appSrc + "/options.js",
     background: paths.appSrc + "/background.js",
     content: paths.appSrc + "/content.js",
+    injector: paths.appSrc + "/injector.js",
   };
 
   config.output.filename = "[name].js";
@@ -93,8 +94,10 @@ const userscriptWebpack = (config, env) => {
 // @grant         unsafeWindow
 // @connect       translate.googleapis.com
 // @connect       translate-pa.googleapis.com
+// @connect       generativelanguage.googleapis.com
 // @connect       api-edge.cognitive.microsofttranslator.com
 // @connect       edge.microsoft.com
+// @connect       bing.com
 // @connect       api-free.deepl.com
 // @connect       api.deepl.com
 // @connect       www2.deepl.com
@@ -111,6 +114,10 @@ const userscriptWebpack = (config, env) => {
 // @connect       transmart.qq.com
 // @connect       niutrans.com
 // @connect       translate.volcengine.com
+// @connect       dict.youdao.com
+// @connect       api.anthropic.com
+// @connect       api.cloudflare.com
+// @connect       openrouter.ai
 // @connect       localhost
 // @connect       127.0.0.1
 // @run-at        document-end
@@ -123,6 +130,7 @@ const userscriptWebpack = (config, env) => {
   config.entry = {
     main: paths.appIndexJs,
     options: paths.appSrc + "/options.js",
+    injector: paths.appSrc + "/injector.js",
     "kiss-translator.user": paths.appSrc + "/userscript.js",
   };
 

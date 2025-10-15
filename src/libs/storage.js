@@ -1,6 +1,8 @@
 import {
   STOKEY_SETTING,
+  STOKEY_SETTING_OLD,
   STOKEY_RULES,
+  STOKEY_RULES_OLD,
   STOKEY_WORDS,
   STOKEY_FAB,
   STOKEY_SYNC,
@@ -15,6 +17,7 @@ import {
 import { isExt, isGm } from "./client";
 import { browser } from "./browser";
 import { kissLog } from "./log";
+import { debounce } from "./utils";
 
 async function set(key, val) {
   if (isExt) {
@@ -59,7 +62,13 @@ async function trySetObj(key, obj) {
 
 async function getObj(key) {
   const val = await get(key);
-  return val && JSON.parse(val);
+  if (val === null || val === undefined) return null;
+  try {
+    return JSON.parse(val);
+  } catch (err) {
+    kissLog("parse json in storage err: ", key);
+  }
+  return null;
 }
 
 async function putObj(key, obj) {
@@ -85,17 +94,19 @@ export const storage = {
  * 设置信息
  */
 export const getSetting = () => getObj(STOKEY_SETTING);
+export const getSettingOld = () => getObj(STOKEY_SETTING_OLD);
 export const getSettingWithDefault = async () => ({
   ...DEFAULT_SETTING,
   ...((await getSetting()) || {}),
 });
 export const setSetting = (val) => setObj(STOKEY_SETTING, val);
-export const updateSetting = (obj) => putObj(STOKEY_SETTING, obj);
+export const putSetting = (obj) => putObj(STOKEY_SETTING, obj);
 
 /**
  * 规则列表
  */
 export const getRules = () => getObj(STOKEY_RULES);
+export const getRulesOld = () => getObj(STOKEY_RULES_OLD);
 export const getRulesWithDefault = async () =>
   (await getRules()) || DEFAULT_RULES;
 export const setRules = (val) => setObj(STOKEY_RULES, val);
@@ -122,14 +133,20 @@ export const setSubRules = (url, val) =>
 export const getFab = () => getObj(STOKEY_FAB);
 export const getFabWithDefault = async () => (await getFab()) || {};
 export const setFab = (obj) => setObj(STOKEY_FAB, obj);
-export const updateFab = (obj) => putObj(STOKEY_FAB, obj);
+export const putFab = (obj) => putObj(STOKEY_FAB, obj);
 
 /**
  * 数据同步
  */
 export const getSync = () => getObj(STOKEY_SYNC);
 export const getSyncWithDefault = async () => (await getSync()) || DEFAULT_SYNC;
-export const updateSync = (obj) => putObj(STOKEY_SYNC, obj);
+export const putSync = (obj) => putObj(STOKEY_SYNC, obj);
+export const putSyncMeta = async (key) => {
+  const { syncMeta = {} } = await getSyncWithDefault();
+  syncMeta[key] = { ...(syncMeta[key] || {}), updateAt: Date.now() };
+  await putSync({ syncMeta });
+};
+export const debounceSyncMeta = debounce(putSyncMeta, 300);
 
 /**
  * ms auth
@@ -156,6 +173,6 @@ export const tryInitDefaultData = async () => {
       BUILTIN_RULES
     );
   } catch (err) {
-    kissLog(err, "init default");
+    kissLog("init default", err);
   }
 };

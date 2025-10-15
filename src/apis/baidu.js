@@ -1,23 +1,19 @@
-import queryString from "query-string";
-import { URL_BAIDU_TRANSAPI, DEFAULT_USER_AGENT } from "../config";
+import { DEFAULT_USER_AGENT } from "../config";
 
-export const genBaidu = async ({ text, from, to }) => {
-  const data = {
+export const genBaidu = ({ texts, from, to }) => {
+  const body = {
     from,
     to,
-    query: text,
+    query: texts.join(" "),
     source: "txt",
   };
 
-  const init = {
-    headers: {
-      // Origin: "https://fanyi.baidu.com",
-      "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
-      "User-Agent": DEFAULT_USER_AGENT,
-    },
-    method: "POST",
-    body: queryString.stringify(data),
+  const url = "https://fanyi.baidu.com/transapi";
+  const headers = {
+    // Origin: "https://fanyi.baidu.com",
+    "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+    "User-Agent": DEFAULT_USER_AGENT,
   };
 
-  return [URL_BAIDU_TRANSAPI, init];
+  return { url, body, headers };
 };

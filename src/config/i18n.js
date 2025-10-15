@@ -136,6 +136,52 @@ https://translate.googleapis.com/translate_a/single?client=gtx&dj=1&dt=t&ie=UTF-
 ${customApiLangs}
 `;
 
+const requestHookHelperZH = `1、第一个参数包含如下字段：'texts', 'from', 'to', 'url', 'key', 'model', 'systemPrompt', ...
+2、返回值必须是包含以下字段的对象： 'url', 'body', 'headers', 'userMsg', 'method'
+3、如返回空值，则hook函数不会产生任何效果。
+
+// 示例
+async (args, { url, body, headers, userMsg, method } = {}) => {
+  console.log("request hook args:", args);
+  return { url, body, headers, userMsg, method };
+}`;
+
+const requestHookHelperEN = `1. The first parameter contains the following fields: 'texts', 'from', 'to', 'url', 'key', 'model', 'systemPrompt', ...
+2. The return value must be an object containing the following fields: 'url', 'body', 'headers', 'userMsg', 'method'
+3. If a null value is returned, the hook function will have no effect.
+
+// Example
+async (args, { url, body, headers, userMsg, method } = {}) => {
+  console.log("request hook args:", args);
+  return { url, body, headers, userMsg, method };
+}`;
+
+const responsetHookHelperZH = `1、第一个参数包含如下字段：'res', ...
+2、返回值必须是包含以下字段的对象： 'translations', 'modelMsg' 
+  （'translations' 应为一个二维数组：[[译文, 源语言]]）
+3、如返回空值，则hook函数不会产生任何效果。
+
+// 示例
+async ({ res, ...args }) => {
+  console.log("reaponse hook args:", res, args);
+  const translations = [["你好", "zh"]];
+  const modelMsg = "";
+  return { translations, modelMsg };
+}`;
+
+const responsetHookHelperEN = `1. The first parameter contains the following fields: 'res', ...
+2. The return value must be an object containing the following fields: 'translations', 'modelMsg'
+  ('translations' should be a two-dimensional array: [[translation, source language]]).
+3. If a null value is returned, the hook function will have no effect.
+
+// Example
+async ({ res, ...args }) => {
+  console.log("reaponse hook args:", res, args);
+  const translations = [["你好", "zh"]];
+  const modelMsg = "";
+  return { translations, modelMsg };
+}`;
+
 export const I18N = {
   app_name: {
     zh: `简约翻译`,
@@ -151,6 +197,16 @@ export const I18N = {
     zh: customApiHelpZH,
     en: customApiHelpEN,
     zh_TW: customApiHelpZH,
+  },
+  request_hook_helper: {
+    zh: requestHookHelperZH,
+    en: requestHookHelperEN,
+    zh_TW: requestHookHelperZH,
+  },
+  response_hook_helper: {
+    zh: responsetHookHelperZH,
+    en: responsetHookHelperEN,
+    zh_TW: responsetHookHelperZH,
   },
   translate_alt: {
     zh: `翻译`,
@@ -243,14 +299,14 @@ export const I18N = {
     zh_TW: `每次請求間隔時間 (0-5000ms)`,
   },
   translate_interval: {
-    zh: `重新翻译间隔时间 (100-5000ms)`,
-    en: `Retranslation Interval (100-5000ms)`,
-    zh_TW: `重新翻譯間隔時間 (100-5000ms)`,
+    zh: `翻译间隔时间 (10-2000ms)`,
+    en: `Translation Interval (10-2000ms)`,
+    zh_TW: `翻譯間隔時間 (10-2000ms)`,
   },
   http_timeout: {
-    zh: `请求超时时间 (5000-30000ms)`,
-    en: `Request Timeout Time (5000-30000ms)`,
-    zh_TW: `請求逾時時間 (5000-30000ms)`,
+    zh: `请求超时时间 (5000-60000ms)`,
+    en: `Request Timeout Time (5000-60000ms)`,
+    zh_TW: `請求逾時時間 (5000-60000ms)`,
   },
   custom_header: {
     zh: `自定义Header参数`,
@@ -274,9 +330,9 @@ export const I18N = {
     zh_TW: `最小翻譯字元數 (1-100)`,
   },
   max_translate_length: {
-    zh: `最大翻译字符数 (100-10000)`,
-    en: `Maximum number Of Translated Characters (100-10000)`,
-    zh_TW: `最大翻譯字元數 (100-10000)`,
+    zh: `最大翻译字符数 (100-100000)`,
+    en: `Maximum number Of Translated Characters (100-100000)`,
+    zh_TW: `最大翻譯字元數 (100-100000)`,
   },
   num_of_newline_characters: {
     zh: `换行字符数 (1-1000)`,
@@ -287,6 +343,11 @@ export const I18N = {
     zh: `翻译服务`,
     en: `Translate Service`,
     zh_TW: `翻譯服務`,
+  },
+  translate_service_multiple: {
+    zh: `翻译服务 (支持多选)`,
+    en: `Translation service (multiple supported)`,
+    zh_TW: `翻譯服務 (支援多選)`,
   },
   translate_timing: {
     zh: `翻译时机`,
@@ -299,9 +360,9 @@ export const I18N = {
     zh_TW: `滾動載入翻譯（建議）`,
   },
   mk_pageopen: {
-    zh: `页面打开全部翻译`,
-    en: `Page Open`,
-    zh_TW: `頁面開啟全部翻譯`,
+    zh: `立即全部翻译`,
+    en: `Translate all now`,
+    zh_TW: `立即全部翻譯`,
   },
   mk_mouseover: {
     zh: `鼠标悬停翻译`,
@@ -434,14 +495,14 @@ export const I18N = {
     zh_TW: `訂閱網址`,
   },
   rules_warn_1: {
-    zh: `1、“个人规则”一直生效，选择“注入订阅规则”后，“订阅规则”才会生效。`,
-    en: `1. The "Personal Rules" are always in effect. After selecting "Inject Subscription Rules", the "Subscription Rules" will take effect.`,
-    zh_TW: `1.「個人規則」會一直生效；選擇「注入訂閱規則」後，「訂閱規則」才會生效。`,
+    zh: `1、规则生效的优先级依次为：个人规则 > 订阅规则 > 全局规则。"全局规则"相当于兜底规则。`,
+    en: `1. The priority of rules is: personal rules > subscription rules > global rules. "Global rules" are like a fallback rule.`,
+    zh_TW: `1.規則生效的優先順序依序為：個人規則 > 訂閱規則 > 全域規則。 "全域規則"相當於兜底規則。`,
   },
   rules_warn_2: {
-    zh: `2、“订阅规则”的注入位置是倒数第二的位置，因此除全局规则(*)外，“个人规则”优先级比“订阅规则”高，“个人规则”填写同样的网址会覆盖”订阅规则“的条目。`,
-    en: `2. The injection position of "Subscription Rules" is the penultimate position. Therefore, except for the global rules (*), the priority of "Personal Rules" is higher than that of "Subscription Rules". Filling in the same url in "Personal Rules" will overwrite "Subscription Rules" entry.`,
-    zh_TW: `2.「訂閱規則」的注入位置為倒數第二位，故除全域規則 (*) 外，「個人規則」優先於「訂閱規則」。在「個人規則」填入相同網址時會覆蓋「訂閱規則」的條目。`,
+    zh: `2、“订阅规则”选择注入后才会生效。`,
+    en: `2. "Subscription rules" will take effect only after injection is selected.`,
+    zh_TW: `2、「訂閱規則」選擇注入後才會生效。`,
   },
   rules_warn_3: {
     zh: `3、关于规则填写：输入框留空或下拉框选“*”表示采用全局规则。`,
@@ -464,14 +525,29 @@ export const I18N = {
     zh_TW: `自建 kiss-wroker 資料同步服務`,
   },
   about_api: {
-    zh: `暂未列出的接口，理论上都可以通过自定义接口的形式支持。`,
-    en: `Interfaces that have not yet been launched can theoretically be supported through custom interfaces.`,
-    zh_TW: `暫未列出的介面，理論上都可透過自訂介面的形式支援。`,
+    zh: `1、其中 BuiltinAI 为浏览器内置AI翻译，目前仅 Chrome 138 及以上版本得到支持。`,
+    en: `1. BuiltinAI is the browser's built-in AI translation, which is currently only supported by Chrome 138 and above.`,
+    zh_TW: `1.其中 BuiltinAI 為瀏覽器內建AI翻譯，目前僅 Chrome 138 以上版本支援。`,
+  },
+  about_api_2: {
+    zh: `2、大部分AI接口都与OpenAI兼容，因此选择添加OpenAI类型即可。`,
+    en: `2. Most AI interfaces are compatible with OpenAI, so just choose to add the OpenAI type.`,
+    zh_TW: `2.大部分AI介面都與OpenAI相容，因此選擇新增OpenAI類型即可。`,
+  },
+  about_api_3: {
+    zh: `2、暂未列出的接口，理论上都可以通过自定义接口 (Custom) 的形式支持。`,
+    en: `2. Interfaces that have not yet been launched can theoretically be supported through custom interfaces.`,
+    zh_TW: `2、暫未列出的介面，理論上都可透過自訂介面  (Custom)  的形式支援。`,
   },
   about_api_proxy: {
     zh: `查看自建一个翻译接口代理`,
     en: `Check out the self-built translation interface proxy`,
     zh_TW: `查看如何自建翻譯介面 Proxy`,
+  },
+  setting_helper: {
+    zh: `新旧配置并不兼容，导出的旧版配置，勿再次导入。`,
+    en: `The old and new configurations are not compatible. Do not import the exported old configuration again.`,
+    zh_TW: `新舊配置並不相容，匯出的舊版配置，勿再次匯入。`,
   },
   style_none: {
     zh: `无`,
@@ -517,6 +593,21 @@ export const I18N = {
     en: `Blockquote`,
     zh_TW: `引用`,
   },
+  gradient: {
+    zh: `渐变`,
+    en: `Gradient`,
+    zh_TW: `漸變`,
+  },
+  blink: {
+    zh: `闪现`,
+    en: `Blink`,
+    zh_TW: `閃現`,
+  },
+  glow: {
+    zh: `发光`,
+    en: `Glow`,
+    zh_TW: `發光`,
+  },
   diy_style: {
     zh: `自定义样式`,
     en: `Custom Style`,
@@ -543,9 +634,9 @@ export const I18N = {
     zh_TW: `1. 支援星號 (*) 萬用字元。2. 多個 URL 請以換行或英文逗號「,」分隔。`,
   },
   selector_helper: {
-    zh: `1、遵循CSS选择器语法。2、多个CSS选择器之间用“;”隔开。3、“shadow root”选择器和内部选择器用“>>>”隔开。`,
-    en: `1. Follow CSS selector syntax. 2. Separate multiple CSS selectors with ";". 3. The "shadow root" selector and the internal selector are separated by ">>>".`,
-    zh_TW: `1. 遵循 CSS 選擇器語法。2. 多個 CSS 選擇器以「;」分隔。3.「shadow root」與內部選擇器以「>>>」分隔。`,
+    zh: `1、需要翻译的目标元素。2、开启自动扫描页面后，本设置无效。3、遵循CSS选择器语法。`,
+    en: `1. The target element to be translated. 2. This setting is invalid when automatic page scanning is enabled. 3. Follow the CSS selector syntax.`,
+    zh_TW: `1、需要翻譯的目標元素。 2.開啟自動掃描頁面後，本設定無效。 3.遵循CSS選擇器語法。`,
   },
   translate_switch: {
     zh: `开启翻译`,
@@ -567,15 +658,40 @@ export const I18N = {
     en: `Selector`,
     zh_TW: `選擇器`,
   },
+  target_selector: {
+    zh: `目标元素选择器`,
+    en: `Target element selector`,
+    zh_TW: `目標元素選擇器`,
+  },
   keep_selector: {
     zh: `保留元素选择器`,
     en: `Keep unchanged selector`,
     zh_TW: `保留元素選擇器`,
   },
   keep_selector_helper: {
-    zh: `1、遵循CSS选择器语法。`,
-    en: `1. Follow CSS selector syntax.`,
-    zh_TW: `1. 遵循 CSS 選擇器語法。`,
+    zh: `1、目标元素下面需要原样保留的子节点。2、遵循CSS选择器语法。`,
+    en: `1. The child nodes under the target element need to remain intact. 2. Follow the CSS selector syntax.`,
+    zh_TW: `1. 目標元素下的子節點需要保持原樣。 2. 遵循 CSS 選擇器語法。`,
+  },
+  root_selector: {
+    zh: `根节点选择器`,
+    en: `Root node selector`,
+    zh_TW: `根節點選擇器`,
+  },
+  root_selector_helper: {
+    zh: `1、用于缩小页面翻译范围。2、遵循CSS选择器语法。`,
+    en: `1. Used to narrow the translation scope of the page. 2. Follow the CSS selector syntax.`,
+    zh_TW: `1.用於縮小頁面翻譯範圍。 2、遵循CSS選擇器語法。`,
+  },
+  ignore_selector: {
+    zh: `不翻译节点选择器`,
+    en: `Ignore node selectors`,
+    zh_TW: `不翻譯節點選擇器`,
+  },
+  ignore_selector_helper: {
+    zh: `1、需要忽略的节点。2、遵循CSS选择器语法。`,
+    en: `1. Nodes to be ignored. 2. Follow CSS selector syntax.`,
+    zh_TW: `1、需要忽略的節點。 2、遵循CSS選擇器語法。`,
   },
   terms: {
     zh: `专业术语`,
@@ -587,20 +703,35 @@ export const I18N = {
     en: `1. Supports regular expression matching, no slash required, and no modifiers are supported. 2. Separate multiple terms with newlines or semicolons ";". 3. Terms and translations are separated by English commas ",". 4. If there is no translation, the term will be deemed not to be translated.`,
     zh_TW: `1. 支援正則表達式比對，無需斜線，且不支援修飾符。2. 多條術語以換行或分號「;」分隔。3. 術語與譯文以英文逗號「,」分隔。4. 無譯文者視為不翻譯該術語。`,
   },
+  ai_terms: {
+    zh: `AI专业术语`,
+    en: `AI Terms`,
+    zh_TW: `AI專業術語`,
+  },
+  ai_terms_helper: {
+    zh: `1、AI智能替换，不支持正则表达式。2、多条术语用换行或分号“;”隔开。3、术语和译文用英文逗号“,”隔开。4、没有译文视为不翻译术语。`,
+    en: `1. AI intelligent replacement does not support regular expressions.2. Separate multiple terms with newlines or semicolons ";". 3. Terms and translations are separated by English commas ",". 4. If there is no translation, the term will be deemed not to be translated.`,
+    zh_TW: `1.AI智能替換，不支援正規表示式。2. 多條術語以換行或分號「;」分隔。3. 術語與譯文以英文逗號「,」分隔。4. 無譯文者視為不翻譯該術語。`,
+  },
   selector_style: {
     zh: `选择器节点样式`,
     en: `Selector Style`,
     zh_TW: `選擇器節點樣式`,
   },
   selector_style_helper: {
-    zh: `开启翻译时注入，关闭翻译时不会移除。`,
-    en: `It is injected when translation is turned on and will not be removed when translation is turned off.`,
-    zh_TW: `在開啟翻譯時注入，關閉翻譯時不會移除。`,
+    zh: `开启翻译时注入。`,
+    en: `It is injected when translation is turned on.`,
+    zh_TW: `在開啟翻譯時注入。`,
   },
   selector_parent_style: {
     zh: `选择器父节点样式`,
-    en: `Selector Parent Style`,
+    en: `Parent Selector Style`,
     zh_TW: `選擇器父節點樣式`,
+  },
+  selector_grand_style: {
+    zh: `选择器祖节点样式`,
+    en: `Grand Selector Style`,
+    zh_TW: `選擇器祖節點樣式`,
   },
   inject_js: {
     zh: `注入JS`,
@@ -608,9 +739,9 @@ export const I18N = {
     zh_TW: `注入 JS`,
   },
   inject_js_helper: {
-    zh: `1、开启翻译时注入运行，关闭翻译时移除。2、随着页面变化，可能会多次注入运行。`,
-    en: `1. Inject and run when translation is turned on, and removed when translation is turned off. 2. As the page changes, it may be injected and run multiple times.`,
-    zh_TW: `1. 開啟翻譯時注入並執行，關閉翻譯時移除。2. 隨頁面變化，可能多次注入與執行。`,
+    zh: `初始化时注入运行，一个页面仅运行一次。`,
+    en: `Injected and run at initialization, and only run once per page.`,
+    zh_TW: `初始化時注入運行，一個頁面僅運行一次。`,
   },
   inject_css: {
     zh: `注入CSS`,
@@ -618,14 +749,9 @@ export const I18N = {
     zh_TW: `注入 CSS`,
   },
   inject_css_helper: {
-    zh: `开启翻译时注入，关闭翻译时将移除。`,
-    en: `Injected when translation is enabled and removed when translation is disabled.`,
-    zh_TW: `開啟翻譯時注入，關閉翻譯時會移除。`,
-  },
-  root_selector: {
-    zh: `根选择器`,
-    en: `Root Selector`,
-    zh_TW: `根選擇器`,
+    zh: `初始化时注入运行，一个页面仅运行一次。`,
+    en: `Injected and run at initialization, and only run once per page.`,
+    zh_TW: `初始化時注入運行，一個頁面僅運行一次。`,
   },
   fixer_function: {
     zh: `修复函数`,
@@ -703,9 +829,9 @@ export const I18N = {
     zh_TW: `OpenAI 提示詞`,
   },
   if_clear_cache: {
-    zh: `是否清除缓存`,
-    en: `Whether clear cache`,
-    zh_TW: `是否清除快取`,
+    zh: `是否清除缓存（默认缓存7天）`,
+    en: `Whether clear cache (Default cache is 7 days)`,
+    zh_TW: `是否清除快取（預設快取7天）`,
   },
   clear_cache_never: {
     zh: `不清除缓存`,
@@ -847,7 +973,21 @@ export const I18N = {
     en: `Hide Fab Button`,
     zh_TW: `隱藏懸浮按鈕`,
   },
-
+  fab_click_action: {
+    zh: `单击悬浮按钮动作`,
+    en: `Single Click Fab Action`,
+    zh_TW: `單擊懸浮按钮動作`,
+  },
+  fab_click_menu: {
+    zh: `弹出菜单`,
+    en: `Popup Menu`,
+    zh_TW: `彈出選單`,
+  },
+  fab_click_translate: {
+    zh: `直接翻译`,
+    en: `Translate`,
+    zh_TW: `直接翻譯`,
+  },
   hide_tran_button: {
     zh: `隐藏翻译按钮`,
     en: `Hide Translate Button`,
@@ -943,6 +1083,11 @@ export const I18N = {
     en: `After enabling, the detection accuracy will increase, but it will reduce the translation speed. Please enable it as appropriate.`,
     zh_TW: `啟用後可提升偵測準確度，但會降低翻譯速度，請視需要開啟。`,
   },
+  detect_lang_service: {
+    zh: `语言检测服务`,
+    en: `Language detect service`,
+    zh_TW: `語言檢測服務`,
+  },
   disable: {
     zh: `禁用`,
     en: `Disable`,
@@ -1037,6 +1182,11 @@ export const I18N = {
     zh: `禁用翻译名单`,
     en: `Translate Blacklist`,
     zh_TW: `停用翻譯名單`,
+  },
+  disabled_orilist: {
+    zh: `禁用Origin名单`,
+    en: `Disabled Origin List`,
+    zh_TW: `停用 Origin 名單`,
   },
   disabled_csplist: {
     zh: `禁用CSP名单`,
@@ -1184,9 +1334,9 @@ export const I18N = {
     zh_TW: `翻譯開始 Hook`,
   },
   translate_start_hook_helper: {
-    zh: `翻译开始时运行，入参为： 翻译节点，原文文本。`,
-    en: `Run when translation starts, the input parameters are: translation node, original text.`,
-    zh_TW: `翻譯開始時執行，入參為：翻譯節點、原文文字。`,
+    zh: `翻译前时运行，入参为： ({hostNode, parentNode, nodes})`,
+    en: `Run before translation, input parameters are: ({hostNode, parentNode, nodes})`,
+    zh_TW: `翻譯前時運行，入參為： ({hostNode, parentNode, nodes})`,
   },
   translate_end_hook: {
     zh: `翻译完成钩子函数`,
@@ -1194,9 +1344,9 @@ export const I18N = {
     zh_TW: `翻譯完成 Hook`,
   },
   translate_end_hook_helper: {
-    zh: `翻译完成时运行，入参为： 翻译节点，原文文本，译文文本，保留元素。`,
-    en: `Run when the translation is completed, the input parameters are: translation node, original text, translation text, retained elements.`,
-    zh_TW: `翻譯完成時執行，入參為：翻譯節點、原文文字、譯文文字、保留元素。`,
+    zh: `翻译完成时运行，入参为： ({hostNode, parentNode, nodes, wrapperNode, innerNode})`,
+    en: `Run when translation is complete, input parameters are: ({hostNode, parentNode, nodes, wrapperNode, innerNode})`,
+    zh_TW: `翻譯完成時運行，入參為： ({hostNode, parentNode, nodes, wrapperNode, innerNode})`,
   },
   translate_remove_hook: {
     zh: `翻译移除钩子函数`,
@@ -1213,6 +1363,11 @@ export const I18N = {
     en: `English Dictionary`,
     zh_TW: `英文字典`,
   },
+  english_suggest: {
+    zh: `英文建议`,
+    en: `English Suggest`,
+    zh_TW: `英文建議`,
+  },
   api_name: {
     zh: `接口名称`,
     en: `API Name`,
@@ -1228,4 +1383,286 @@ export const I18N = {
     en: `If translate selected`,
     zh_TW: `是否啟用劃詞翻譯`,
   },
+  use_batch_fetch: {
+    zh: `是否聚合发送翻译请求`,
+    en: `Whether to aggregate and send translation requests`,
+    zh_TW: `是否聚合發送翻譯請求`,
+  },
+  batch_interval: {
+    zh: `聚合请求等待时间(100-10000)`,
+    en: `Aggregation request waiting time (100-10000)`,
+    zh_TW: `聚合請求等待時間(100-10000)`,
+  },
+  batch_size: {
+    zh: `聚合请求最大段落数(1-100)`,
+    en: `Maximum number of paragraphs in an aggregation request (1-100)`,
+    zh_TW: `聚合請求最大段落數(1-100)`,
+  },
+  batch_length: {
+    zh: `聚合请求最大文本长度(1000-100000)`,
+    en: `Maximum text length for aggregation requests (1000-100000)`,
+    zh_TW: `聚合請求最大文字長度(1000-100000)`,
+  },
+  use_context: {
+    zh: `是否启用智能上下文`,
+    en: `Whether to enable AI context`,
+    zh_TW: `是否啟用智慧上下文`,
+  },
+  context_size: {
+    zh: `上下文会话数量(1-20)`,
+    en: `Number of context sessions(1-20)`,
+    zh_TW: `上下文會話數量(1-20)`,
+  },
+  auto_scan_page: {
+    zh: `自动扫描页面`,
+    en: `Auto scan page`,
+    zh_TW: `自動掃描頁面`,
+  },
+  has_rich_text: {
+    zh: `启用富文本翻译`,
+    en: `Enable rich text translation`,
+    zh_TW: `啟用富文本翻譯`,
+  },
+  has_shadowroot: {
+    zh: `扫描Shadowroot`,
+    en: `Scan Shadowroot`,
+    zh_TW: `掃描Shadowroot`,
+  },
+  mousehover_translate: {
+    zh: `鼠标悬停翻译`,
+    en: `Mouseover Translation`,
+    zh_TW: `滑鼠懸停翻譯`,
+  },
+  use_mousehover_translation: {
+    zh: `启用鼠标悬停翻译`,
+    en: `Enable mouseover translation`,
+    zh_TW: `啟用滑鼠懸停翻譯`,
+  },
+  selected_translation_alert: {
+    zh: `划词翻译的开启和关闭请到“规则设置”里面设置。`,
+    en: `To turn selected translation on or off, please go to "Rule Settings".`,
+    zh_TW: `劃詞翻譯的開啟和關閉請到「規則設定」裡面設定。`,
+  },
+  mousehover_key_help: {
+    zh: `当快捷键置空时表示鼠标悬停直接翻译`,
+    en: `When the shortcut key is empty, it means that the mouse hovers to translate directly`,
+    zh_TW: `當快捷鍵置空時表示滑鼠懸停直接翻譯`,
+  },
+  autoscan_alt: {
+    zh: `自动扫描`,
+    en: `Auto Scan`,
+    zh_TW: `自動掃描`,
+  },
+  shadowroot_alt: {
+    zh: `ShadowRoot`,
+    en: `ShadowRoot`,
+    zh_TW: `ShadowRoot`,
+  },
+  richtext_alt: {
+    zh: `保留富文本`,
+    en: `Rich Text`,
+    zh_TW: `保留富文本`,
+  },
+  transonly_alt: {
+    zh: `隐藏原文`,
+    en: `Hide Original`,
+    zh_TW: `隱藏原文`,
+  },
+  confirm_title: {
+    zh: `确认`,
+    en: `Confirm`,
+    zh_TW: `確認`,
+  },
+  confirm_message: {
+    zh: `确定操作吗？`,
+    en: `Are you sure you want to proceed?`,
+    zh_TW: `確定操作嗎？`,
+  },
+  confirm_action: {
+    zh: `确定`,
+    en: `Confirm`,
+    zh_TW: `確定`,
+  },
+  cancel_action: {
+    zh: `取消`,
+    en: `Cancel`,
+    zh_TW: `取消`,
+  },
+  pls_press_shortcut: {
+    zh: `请按下快捷键组合`,
+    en: `Please press the shortcut key combination`,
+    zh_TW: `請按下快速鍵組合`,
+  },
+  load_setting_err: {
+    zh: `数据加载出错，请刷新页面或卸载后重新安装。`,
+    en: `Please press the shortcut key combination`,
+    zh_TW: `請按下快速鍵組合`,
+  },
+  translation_style: {
+    zh: `翻译风格`,
+    en: `Translation style`,
+    zh_TW: `翻譯風格`,
+  },
+  placeholder: {
+    zh: `占位符`,
+    en: `Placeholder`,
+    zh_TW: `佔位符`,
+  },
+  tag_name: {
+    zh: `占位标签名`,
+    en: `Placeholder tag name`,
+    zh_TW: `佔位標名`,
+  },
+  system_prompt_helper: {
+    zh: `在未完全理解默认Prompt的情况下，请勿随意修改，否则可能无法工作。`,
+    en: `Do not modify the default prompt without fully understanding it, otherwise it may not work.`,
+    zh_TW: `在未完全理解預設Prompt的情況下，請勿隨意修改，否則可能無法運作。`,
+  },
+  if_pre_init: {
+    zh: `是否预初始化`,
+    en: `Whether to pre-initialize`,
+    zh_TW: `是否預初始化`,
+  },
+  export_old: {
+    zh: `导出旧版`,
+    en: `Export old version`,
+    zh_TW: `匯出舊版`,
+  },
+  favorite_words_helper: {
+    zh: `导入词汇请使用txt文件，每一行一个单词。`,
+    en: `To import vocabulary, please use a txt file with one word per line.`,
+    zh_TW: `匯入詞彙請使用txt文件，每一行一個單字。`,
+  },
+  btn_tip_click_away: {
+    zh: `失焦隐藏/显示`,
+    en: `Loss of focus hide/show`,
+    zh_TW: `失焦隱藏/顯示`,
+  },
+  btn_tip_follow_selection: {
+    zh: `跟随/固定模式`,
+    en: `Follow/Fixed Mode`,
+    zh_TW: `跟隨/固定模式`,
+  },
+  btn_tip_simple_style: {
+    zh: `迷你/常规模式`,
+    en: `Mini/Regular Mode`,
+    zh_TW: `迷你/常規模式`,
+  },
+  api_placeholder: {
+    zh: `占位符`,
+    en: `Placeholder`,
+    zh_TW: `佔位符`,
+  },
+  api_placetag: {
+    zh: `占位标签`,
+    en: `Placeholder tags`,
+    zh_TW: `佔位標`,
+  },
+  detected_lang: {
+    zh: `语言检测`,
+    en: `Language detection`,
+    zh_TW: `語言偵測`,
+  },
+  detected_result: {
+    zh: `检测结果`,
+    en: `Detect result`,
+    zh_TW: `檢測結果`,
+  },
+  subtitle_translate: {
+    zh: `字幕翻译`,
+    en: `Subtitle translate`,
+    zh_TW: `字幕翻譯`,
+  },
+  toggle_subtitle_translate: {
+    zh: `启用字幕翻译`,
+    en: `Enable subtitle translation`,
+    zh_TW: `啟用字幕翻譯`,
+  },
+  is_bilingual_view: {
+    zh: `双语显示`,
+    en: `Enable bilingual display`,
+    zh_TW: `雙語顯示`,
+  },
+  background_styles: {
+    zh: `背景样式`,
+    en: `DBackground Style`,
+    zh_TW: `背景樣式`,
+  },
+  origin_styles: {
+    zh: `原文样式`,
+    en: `Original style`,
+    zh_TW: `原文樣式`,
+  },
+  translation_styles: {
+    zh: `译文样式`,
+    en: `Translation style`,
+    zh_TW: `譯文樣式`,
+  },
+  ai_segmentation: {
+    zh: `AI智能断句`,
+    en: `AI intelligent punctuation`,
+    zh_TW: `AI智慧斷句`,
+  },
+  ai_chunk_length: {
+    zh: `AI处理切割长度(200-20000)`,
+    en: `AI processing chunk length(200-20000)`,
+    zh_TW: `AI处理切割长度(200-20000)`,
+  },
+  subtitle_helper_1: {
+    zh: `1、目前仅支持Youtube桌面网站，且仅支持浏览器扩展。`,
+    en: `1. Currently only supports Youtube desktop website and browser extension.`,
+    zh_TW: `1.目前僅支援Youtube桌面網站，且僅支援瀏覽器擴充功能。`,
+  },
+  subtitle_helper_2: {
+    zh: `2、插件内置基础的字幕合并、断句算法，可满足大部分情况。`,
+    en: `2. The plug-in has built-in basic subtitle merging and sentence segmentation algorithms, which can meet most situations.`,
+    zh_TW: `2.插件內建基礎的字幕合併、斷句演算法，可滿足大部分情況。`,
+  },
+  subtitle_helper_3: {
+    zh: `3、亦可以启用AI智能断句，但需考虑切割长度及AI接口能力，可能处理时间会很长，甚至处理失败，导致无法看到字幕。`,
+    en: `3. You can also enable AI intelligent segmentation, but you need to consider the segmentation length and AI interface capabilities. The processing time may be very long or even fail, resulting in the inability to see subtitles.`,
+    zh_TW: `3.亦可啟用AI智能斷句，但需考慮切割長度及AI介面能力，可能處理時間會很長，甚至處理失敗，導致無法看到字幕。`,
+  },
+  default_styles_example: {
+    zh: `默认样式参考：`,
+    en: `Default styles reference:`,
+    zh_TW: `認樣式參考：`,
+  },
+  subtitle_load_succeed: {
+    zh: `双语字幕加载成功！`,
+    en: `Bilingual subtitles loaded successfully!`,
+    zh_TW: `双语字幕加载成功！`,
+  },
+  subtitle_load_failed: {
+    zh: `双语字幕加载失败！`,
+    en: `Failed to load bilingual subtitles!`,
+    zh_TW: `双语字幕加载失败！`,
+  },
+  try_get_subtitle_data: {
+    zh: `尝试获取字幕数据，请稍候...`,
+    en: `Trying to get subtitle data, please wait...`,
+    zh_TW: `尝试获取字幕数据，请稍候...`,
+  },
+  subtitle_data_processing: {
+    zh: `字幕数据处理中...`,
+    en: `Subtitle data processing...`,
+    zh_TW: `字幕数据处理中...`,
+  },
+  starting_to_process_subtitle: {
+    zh: `开始处理字幕数据...`,
+    en: `Starting to process subtitle data...`,
+    zh_TW: `开始处理字幕数据...`,
+  },
+  subtitle_data_is_ready: {
+    zh: `字幕数据已准备就绪，请点击KT按钮加载`,
+    en: `The subtitle data is ready, please click the KT button to load it`,
+    zh_TW: `字幕資料已準備就緒，請點擊KT按鈕加載`,
+  },
+  log_level: {
+    zh: `日志级别`,
+    en: `Log Level`,
+    zh_TW: `日誌等級`,
+  },
 };
+
+export const i18n = (lang) => (key) => I18N[key]?.[lang] || "";

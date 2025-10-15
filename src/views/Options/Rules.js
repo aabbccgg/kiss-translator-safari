@@ -10,15 +10,12 @@ import {
   GLOBLA_RULE,
   OPT_LANGS_FROM,
   OPT_LANGS_TO,
-  OPT_TRANS_ALL,
   OPT_STYLE_ALL,
   OPT_STYLE_DIY,
-  OPT_STYLE_USE_COLOR,
+  // OPT_STYLE_USE_COLOR,
   URL_KISS_RULES_NEW_ISSUE,
   OPT_SYNCTYPE_WORKER,
-  OPT_TIMING_PAGESCROLL,
   DEFAULT_TRANS_TAG,
-  OPT_TIMING_ALL,
 } from "../../config";
 import { useState, useEffect, useMemo } from "react";
 import { useI18n } from "../../hooks/I18n";
@@ -27,7 +24,6 @@ import Accordion from "@mui/material/Accordion";
 import AccordionSummary from "@mui/material/AccordionSummary";
 import AccordionDetails from "@mui/material/AccordionDetails";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import { useRules } from "../../hooks/Rules";
 import MenuItem from "@mui/material/MenuItem";
 import Grid from "@mui/material/Grid";
@@ -48,42 +44,65 @@ import { loadOrFetchSubRules } from "../../libs/subRules";
 import { useAlert } from "../../hooks/Alert";
 import { syncShareRules } from "../../libs/sync";
 import { debounce } from "../../libs/utils";
-import { delSubRules, getSyncWithDefault } from "../../libs/storage";
-import OwSubRule from "./OwSubRule";
+import {
+  delSubRules,
+  getSyncWithDefault,
+  getRulesOld,
+} from "../../libs/storage";
+// import OwSubRule from "./OwSubRule";
 import ClearAllIcon from "@mui/icons-material/ClearAll";
 import HelpButton from "./HelpButton";
 import { useSyncCaches } from "../../hooks/Sync";
 import DownloadButton from "./DownloadButton";
 import UploadButton from "./UploadButton";
-import { FIXER_ALL } from "../../libs/webfix";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import CancelIcon from "@mui/icons-material/Cancel";
 import SaveIcon from "@mui/icons-material/Save";
 import { kissLog } from "../../libs/log";
+import { useApiList } from "../../hooks/Api";
+import ShowMoreButton from "./ShowMoreButton";
+import { useConfirm } from "../../hooks/Confirm";
+import { defaultStyles } from "../../libs/style";
+
+const calculateInitialValues = (rule) => {
+  const base = rule?.pattern === "*" ? GLOBLA_RULE : DEFAULT_RULE;
+  return { ...base, ...(rule || {}) };
+};
 
 function RuleFields({ rule, rules, setShow, setKeyword }) {
-  const initFormValues = {
-    ...(rule?.pattern === "*" ? GLOBLA_RULE : DEFAULT_RULE),
-    ...(rule || {}),
-  };
-  const editMode = !!rule;
+  const editMode = useMemo(() => !!rule, [rule]);
 
   const i18n = useI18n();
   const [disabled, setDisabled] = useState(editMode);
   const [errors, setErrors] = useState({});
-  const [formValues, setFormValues] = useState(initFormValues);
+  const [initialFormValues, setInitialFormValues] = useState(() =>
+    calculateInitialValues(rule)
+  );
+  const [formValues, setFormValues] = useState(initialFormValues);
   const [showMore, setShowMore] = useState(!rules);
+  const { enabledApis } = useApiList();
+
+  useEffect(() => {
+    const newInitialValues = calculateInitialValues(rule);
+    setInitialFormValues(newInitialValues);
+    setFormValues(newInitialValues);
+  }, [rule]);
+
   const {
     pattern,
     selector,
     keepSelector = "",
+    rootsSelector = "",
+    ignoreSelector = "",
     terms = "",
+    aiTerms = "",
     selectStyle = "",
     parentStyle = "",
+    grandStyle = "",
     injectJs = "",
     injectCss = "",
-    translator,
+    apiSlug,
     fromLang,
     toLang,
     textStyle,
@@ -91,18 +110,31 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
     bgColor,
     textDiyStyle,
     transOnly = "false",
-    transTiming = OPT_TIMING_PAGESCROLL,
+    autoScan = "true",
+    hasRichText = "true",
+    hasShadowroot = "false",
+    // transTiming = OPT_TIMING_PAGESCROLL,
     transTag = DEFAULT_TRANS_TAG,
     transTitle = "false",
-    transSelected = "true",
-    detectRemote = "false",
-    skipLangs = [],
-    fixerSelector = "",
-    fixerFunc = "-",
+    // detectRemote = "true",
+    // skipLangs = [],
+    // fixerSelector = "",
+    // fixerFunc = "-",
     transStartHook = "",
     transEndHook = "",
-    transRemoveHook = "",
+    // transRemoveHook = "",
   } = formValues;
+
+  const isModified = useMemo(() => {
+    return JSON.stringify(initialFormValues) !== JSON.stringify(formValues);
+  }, [initialFormValues, formValues]);
+
+  const stylesExample = useMemo(() => {
+    return Object.entries(defaultStyles)
+      .filter(([_, v]) => v)
+      .map(([k, v]) => `${i18n(k)}:${v}`)
+      .join("\n");
+  }, [i18n]);
 
   const hasSamePattern = (str) => {
     for (const item of rules.list) {
@@ -144,7 +176,15 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
       setShow(false);
     }
     setErrors({});
-    setFormValues(initFormValues);
+    setFormValues(initialFormValues);
+  };
+
+  const handleRestore = (e) => {
+    e.preventDefault();
+    setFormValues(({ pattern }) => ({
+      ...(pattern === "*" ? GLOBLA_RULE : DEFAULT_RULE),
+      pattern,
+    }));
   };
 
   const handleSubmit = (e) => {
@@ -172,7 +212,7 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
       // 添加
       rules.add(formValues);
       setShow(false);
-      setFormValues(initFormValues);
+      setFormValues(initialFormValues);
     }
   };
 
@@ -180,30 +220,6 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
     <MenuItem key={GLOBAL_KEY} value={GLOBAL_KEY}>
       {GLOBAL_KEY}
     </MenuItem>
-  );
-
-  const ShowMoreButton = showMore ? (
-    <Button
-      size="small"
-      variant="text"
-      onClick={() => {
-        setShowMore(false);
-      }}
-      startIcon={<ExpandLessIcon />}
-    >
-      {i18n("less")}
-    </Button>
-  ) : (
-    <Button
-      size="small"
-      variant="text"
-      onClick={() => {
-        setShowMore(true);
-      }}
-      startIcon={<ExpandMoreIcon />}
-    >
-      {i18n("more")}
-    </Button>
   );
 
   return (
@@ -223,12 +239,32 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
         />
         <TextField
           size="small"
-          label={i18n("selector")}
+          label={i18n("root_selector")}
+          helperText={i18n("root_selector_helper")}
+          name="rootsSelector"
+          value={rootsSelector}
+          disabled={disabled}
+          onChange={handleChange}
+          multiline
+        />
+        <TextField
+          size="small"
+          label={i18n("ignore_selector")}
+          helperText={i18n("ignore_selector_helper")}
+          name="ignoreSelector"
+          value={ignoreSelector}
+          disabled={disabled}
+          onChange={handleChange}
+          multiline
+        />
+        <TextField
+          size="small"
+          label={i18n("target_selector")}
           error={!!errors.selector}
           helperText={errors.selector || i18n("selector_helper")}
           name="selector"
           value={selector}
-          disabled={disabled}
+          disabled={autoScan === "true" || disabled}
           onChange={handleChange}
           onFocus={handleFocus}
           multiline
@@ -246,7 +282,7 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
 
         <Box>
           <Grid container spacing={2} columns={12}>
-            <Grid item xs={12} sm={6} md={3} lg={2}>
+            <Grid item xs={12} sm={12} md={6} lg={3}>
               <TextField
                 select
                 size="small"
@@ -262,26 +298,26 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
                 <MenuItem value={"false"}>{i18n("default_disabled")}</MenuItem>
               </TextField>
             </Grid>
-            <Grid item xs={12} sm={6} md={3} lg={2}>
+            <Grid item xs={12} sm={12} md={6} lg={3}>
               <TextField
                 select
                 size="small"
                 fullWidth
-                name="translator"
-                value={translator}
+                name="apiSlug"
+                value={apiSlug}
                 label={i18n("translate_service")}
                 disabled={disabled}
                 onChange={handleChange}
               >
                 {GlobalItem}
-                {OPT_TRANS_ALL.map((item) => (
-                  <MenuItem key={item} value={item}>
-                    {item}
+                {enabledApis.map((api) => (
+                  <MenuItem key={api.apiSlug} value={api.apiSlug}>
+                    {api.apiName}
                   </MenuItem>
                 ))}
               </TextField>
             </Grid>
-            <Grid item xs={12} sm={6} md={3} lg={2}>
+            <Grid item xs={12} sm={12} md={6} lg={3}>
               <TextField
                 select
                 size="small"
@@ -300,7 +336,7 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
                 ))}
               </TextField>
             </Grid>
-            <Grid item xs={12} sm={6} md={3} lg={2}>
+            <Grid item xs={12} sm={12} md={6} lg={3}>
               <TextField
                 select
                 size="small"
@@ -319,7 +355,107 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
                 ))}
               </TextField>
             </Grid>
-            <Grid item xs={12} sm={6} md={3} lg={2}>
+
+            <Grid item xs={12} sm={12} md={6} lg={3}>
+              <TextField
+                select
+                size="small"
+                fullWidth
+                name="autoScan"
+                value={autoScan}
+                label={i18n("auto_scan_page")}
+                disabled={disabled}
+                onChange={handleChange}
+              >
+                {GlobalItem}
+                <MenuItem value={"false"}>{i18n("disable")}</MenuItem>
+                <MenuItem value={"true"}>{i18n("enable")}</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={12} md={6} lg={3}>
+              <TextField
+                select
+                size="small"
+                fullWidth
+                name="hasRichText"
+                value={hasRichText}
+                label={i18n("has_rich_text")}
+                disabled={disabled}
+                onChange={handleChange}
+              >
+                {GlobalItem}
+                <MenuItem value={"false"}>{i18n("disable")}</MenuItem>
+                <MenuItem value={"true"}>{i18n("enable")}</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={12} md={6} lg={3}>
+              <TextField
+                select
+                size="small"
+                fullWidth
+                name="hasShadowroot"
+                value={hasShadowroot}
+                label={i18n("has_shadowroot")}
+                disabled={disabled}
+                onChange={handleChange}
+              >
+                {GlobalItem}
+                <MenuItem value={"false"}>{i18n("disable")}</MenuItem>
+                <MenuItem value={"true"}>{i18n("enable")}</MenuItem>
+              </TextField>
+            </Grid>
+
+            <Grid item xs={12} sm={12} md={6} lg={3}>
+              <TextField
+                select
+                size="small"
+                fullWidth
+                name="transOnly"
+                value={transOnly}
+                label={i18n("show_only_translations")}
+                disabled={disabled}
+                onChange={handleChange}
+              >
+                {GlobalItem}
+                <MenuItem value={"false"}>{i18n("disable")}</MenuItem>
+                <MenuItem value={"true"}>{i18n("enable")}</MenuItem>
+              </TextField>
+            </Grid>
+
+            <Grid item xs={12} sm={12} md={6} lg={3}>
+              <TextField
+                select
+                size="small"
+                fullWidth
+                name="transTitle"
+                value={transTitle}
+                label={i18n("translate_page_title")}
+                disabled={disabled}
+                onChange={handleChange}
+              >
+                {GlobalItem}
+                <MenuItem value={"false"}>{i18n("disable")}</MenuItem>
+                <MenuItem value={"true"}>{i18n("enable")}</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={12} md={6} lg={3}>
+              <TextField
+                select
+                size="small"
+                fullWidth
+                name="transTag"
+                value={transTag}
+                label={i18n("translation_element_tag")}
+                disabled={disabled}
+                onChange={handleChange}
+              >
+                {GlobalItem}
+                <MenuItem value={"span"}>{`<span>`}</MenuItem>
+                <MenuItem value={"font"}>{`<font>`}</MenuItem>
+              </TextField>
+            </Grid>
+
+            <Grid item xs={12} sm={12} md={6} lg={3}>
               <TextField
                 select
                 size="small"
@@ -338,19 +474,17 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
                 ))}
               </TextField>
             </Grid>
-            {OPT_STYLE_USE_COLOR.includes(textStyle) && (
-              <Grid item xs={12} sm={6} md={3} lg={2}>
-                <TextField
-                  size="small"
-                  fullWidth
-                  name="bgColor"
-                  value={bgColor}
-                  label={i18n("bg_color")}
-                  disabled={disabled}
-                  onChange={handleChange}
-                />
-              </Grid>
-            )}
+            <Grid item xs={12} sm={12} md={6} lg={3}>
+              <TextField
+                size="small"
+                fullWidth
+                name="bgColor"
+                value={bgColor}
+                label={i18n("bg_color")}
+                disabled={disabled}
+                onChange={handleChange}
+              />
+            </Grid>
           </Grid>
         </Box>
 
@@ -358,7 +492,27 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
           <TextField
             size="small"
             label={i18n("diy_style")}
-            helperText={i18n("diy_style_helper")}
+            FormHelperTextProps={{
+              component: "div",
+            }}
+            helperText={
+              <Box>
+                <Box component="div">{i18n("default_styles_example")}</Box>
+                <Box
+                  component="pre"
+                  sx={{
+                    overflowX: "auto",
+                    height: 200,
+                    resize: "vertical",
+                    minHeight: 100,
+                    margin: 0,
+                    // border: "1px solid #ccc",
+                  }}
+                >
+                  {stylesExample}
+                </Box>
+              </Box>
+            }
             name="textDiyStyle"
             value={textDiyStyle}
             disabled={disabled}
@@ -368,160 +522,8 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
           />
         )}
 
-        <Box>
-          <Grid container spacing={2} columns={12}>
-            <Grid item xs={12} sm={6} md={3} lg={2}>
-              <TextField
-                select
-                size="small"
-                fullWidth
-                name="transOnly"
-                value={transOnly}
-                label={i18n("show_only_translations")}
-                disabled={disabled}
-                onChange={handleChange}
-              >
-                {GlobalItem}
-                <MenuItem value={"false"}>{i18n("disable")}</MenuItem>
-                <MenuItem value={"true"}>{i18n("enable")}</MenuItem>
-              </TextField>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3} lg={2}>
-              <TextField
-                select
-                size="small"
-                fullWidth
-                name="transTiming"
-                value={transTiming}
-                label={i18n("trigger_mode")}
-                disabled={disabled}
-                onChange={handleChange}
-              >
-                {GlobalItem}
-                {OPT_TIMING_ALL.map((item) => (
-                  <MenuItem key={item} value={item}>
-                    {i18n(item)}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3} lg={2}>
-              <TextField
-                select
-                size="small"
-                fullWidth
-                name="transTag"
-                value={transTag}
-                label={i18n("translation_element_tag")}
-                disabled={disabled}
-                onChange={handleChange}
-              >
-                {GlobalItem}
-                <MenuItem value={"span"}>{`<span>`}</MenuItem>
-                <MenuItem value={"font"}>{`<font>`}</MenuItem>
-              </TextField>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3} lg={2}>
-              <TextField
-                select
-                size="small"
-                fullWidth
-                name="transTitle"
-                value={transTitle}
-                label={i18n("translate_page_title")}
-                disabled={disabled}
-                onChange={handleChange}
-              >
-                {GlobalItem}
-                <MenuItem value={"false"}>{i18n("disable")}</MenuItem>
-                <MenuItem value={"true"}>{i18n("enable")}</MenuItem>
-              </TextField>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3} lg={2}>
-              <TextField
-                select
-                size="small"
-                fullWidth
-                name="transSelected"
-                value={transSelected}
-                label={i18n("translate_selected")}
-                disabled={disabled}
-                onChange={handleChange}
-              >
-                {GlobalItem}
-                <MenuItem value={"false"}>{i18n("disable")}</MenuItem>
-                <MenuItem value={"true"}>{i18n("enable")}</MenuItem>
-              </TextField>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3} lg={2}>
-              <TextField
-                select
-                size="small"
-                fullWidth
-                name="detectRemote"
-                value={detectRemote}
-                label={i18n("detect_lang_remote")}
-                disabled={disabled}
-                onChange={handleChange}
-              >
-                {GlobalItem}
-                <MenuItem value={"false"}>{i18n("disable")}</MenuItem>
-                <MenuItem value={"true"}>{i18n("enable")}</MenuItem>
-              </TextField>
-            </Grid>
-          </Grid>
-        </Box>
-
         {showMore && (
           <>
-            <TextField
-              size="small"
-              label={i18n("fixer_selector")}
-              name="fixerSelector"
-              value={fixerSelector}
-              disabled={disabled}
-              onChange={handleChange}
-              multiline
-              maxRows={10}
-            />
-            <TextField
-              select
-              size="small"
-              name="fixerFunc"
-              value={fixerFunc}
-              label={i18n("fixer_function")}
-              helperText={i18n("fixer_function_helper")}
-              disabled={disabled}
-              onChange={handleChange}
-            >
-              {GlobalItem}
-              {FIXER_ALL.map((item) => (
-                <MenuItem key={item} value={item}>
-                  {item}
-                </MenuItem>
-              ))}
-            </TextField>
-
-            <TextField
-              select
-              size="small"
-              label={i18n("skip_langs")}
-              helperText={i18n("skip_langs_helper")}
-              name="skipLangs"
-              value={skipLangs}
-              disabled={disabled}
-              onChange={handleChange}
-              SelectProps={{
-                multiple: true,
-              }}
-            >
-              {OPT_LANGS_TO.map(([langKey, langName]) => (
-                <MenuItem key={langKey} value={langKey}>
-                  {langName}
-                </MenuItem>
-              ))}
-            </TextField>
-
             <TextField
               size="small"
               label={i18n("terms")}
@@ -533,35 +535,12 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
               multiline
               maxRows={10}
             />
-
             <TextField
               size="small"
-              label={i18n("translate_start_hook")}
-              helperText={i18n("translate_start_hook_helper")}
-              name="transStartHook"
-              value={transStartHook}
-              disabled={disabled}
-              onChange={handleChange}
-              multiline
-              maxRows={10}
-            />
-            <TextField
-              size="small"
-              label={i18n("translate_end_hook")}
-              helperText={i18n("translate_end_hook_helper")}
-              name="transEndHook"
-              value={transEndHook}
-              disabled={disabled}
-              onChange={handleChange}
-              multiline
-              maxRows={10}
-            />
-            <TextField
-              size="small"
-              label={i18n("translate_remove_hook")}
-              helperText={i18n("translate_remove_hook_helper")}
-              name="transRemoveHook"
-              value={transRemoveHook}
+              label={i18n("ai_terms")}
+              helperText={i18n("ai_terms_helper")}
+              name="aiTerms"
+              value={aiTerms}
               disabled={disabled}
               onChange={handleChange}
               multiline
@@ -590,6 +569,52 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
               maxRows={10}
               multiline
             />
+            <TextField
+              size="small"
+              label={i18n("selector_grand_style")}
+              helperText={i18n("selector_style_helper")}
+              name="grandStyle"
+              value={grandStyle}
+              disabled={disabled}
+              onChange={handleChange}
+              maxRows={10}
+              multiline
+            />
+
+            <TextField
+              size="small"
+              label={i18n("translate_start_hook")}
+              helperText={i18n("translate_start_hook_helper")}
+              name="transStartHook"
+              value={transStartHook}
+              disabled={disabled}
+              onChange={handleChange}
+              multiline
+              maxRows={10}
+            />
+            <TextField
+              size="small"
+              label={i18n("translate_end_hook")}
+              helperText={i18n("translate_end_hook_helper")}
+              name="transEndHook"
+              value={transEndHook}
+              disabled={disabled}
+              onChange={handleChange}
+              multiline
+              maxRows={10}
+            />
+            {/* <TextField
+              size="small"
+              label={i18n("translate_remove_hook")}
+              helperText={i18n("translate_remove_hook_helper")}
+              name="transRemoveHook"
+              value={transRemoveHook}
+              disabled={disabled}
+              onChange={handleChange}
+              multiline
+              maxRows={10}
+            /> */}
+
             <TextField
               size="small"
               label={i18n("inject_css")}
@@ -645,7 +670,6 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
                       {i18n("delete")}
                     </Button>
                   )}
-                  {ShowMoreButton}
                 </>
               ) : (
                 <>
@@ -654,6 +678,7 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
                     variant="contained"
                     type="submit"
                     startIcon={<SaveIcon />}
+                    disabled={!isModified}
                   >
                     {i18n("save")}
                   </Button>
@@ -665,9 +690,16 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
                   >
                     {i18n("cancel")}
                   </Button>
-                  {ShowMoreButton}
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={handleRestore}
+                  >
+                    {i18n("restore_default")}
+                  </Button>
                 </>
               )}
+              <ShowMoreButton showMore={showMore} onChange={setShowMore} />
             </Stack>
           ) : (
             // 添加
@@ -688,7 +720,7 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
               >
                 {i18n("cancel")}
               </Button>
-              {ShowMoreButton}
+              <ShowMoreButton showMore={showMore} onChange={setShowMore} />
             </Stack>
           ))}
       </Stack>
@@ -696,9 +728,9 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
   );
 }
 
-function RuleAccordion({ rule, rules }) {
+function RuleAccordion({ rule, rules, isExpanded = false }) {
   const i18n = useI18n();
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(isExpanded);
 
   const handleChange = (e) => {
     setExpanded((pre) => !pre);
@@ -751,7 +783,7 @@ function ShareButton({ rules, injectRules, selectedUrl }) {
       window.open(url, "_blank");
     } catch (err) {
       alert.warning(i18n("error_got_some_wrong"));
-      kissLog(err, "share rules");
+      kissLog("share rules", err);
     }
   };
 
@@ -767,12 +799,12 @@ function ShareButton({ rules, injectRules, selectedUrl }) {
   );
 }
 
-function UserRules({ subRules }) {
+function UserRules({ subRules, rules }) {
   const i18n = useI18n();
-  const rules = useRules();
   const [showAdd, setShowAdd] = useState(false);
   const { setting, updateSetting } = useSetting();
   const [keyword, setKeyword] = useState("");
+  const confirm = useConfirm();
 
   const injectRules = !!setting?.injectRules;
   const { selectedUrl, selectedRules } = subRules;
@@ -781,7 +813,7 @@ function UserRules({ subRules }) {
     try {
       await rules.merge(JSON.parse(data));
     } catch (err) {
-      kissLog(err, "import rules");
+      kissLog("import rules", err);
     }
   };
 
@@ -789,6 +821,16 @@ function UserRules({ subRules }) {
     updateSetting({
       injectRules: !injectRules,
     });
+  };
+
+  const handleClearAll = async () => {
+    const isConfirmed = await confirm({
+      confirmText: i18n("confirm_title"),
+      cancelText: i18n("cancel"),
+    });
+    if (isConfirmed) {
+      rules.clear();
+    }
   };
 
   useEffect(() => {
@@ -829,6 +871,11 @@ function UserRules({ subRules }) {
           text={i18n("export")}
           fileName={`kiss-rules_${Date.now()}.json`}
         />
+        <DownloadButton
+          handleData={async () => JSON.stringify(await getRulesOld(), null, 2)}
+          text={i18n("export_old")}
+          fileName={`kiss-rules_v1_${Date.now()}.json`}
+        />
 
         <ShareButton
           rules={rules}
@@ -839,9 +886,7 @@ function UserRules({ subRules }) {
         <Button
           size="small"
           variant="outlined"
-          onClick={() => {
-            rules.clear();
-          }}
+          onClick={handleClearAll}
           startIcon={<ClearAllIcon />}
         >
           {i18n("clear_all")}
@@ -873,7 +918,8 @@ function UserRules({ subRules }) {
         {rules.list
           .filter(
             (rule) =>
-              rule.pattern.includes(keyword) || keyword.includes(rule.pattern)
+              rule.pattern !== "*" &&
+              (rule.pattern.includes(keyword) || keyword.includes(rule.pattern))
           )
           .map((rule) => (
             <RuleAccordion key={rule.pattern} rule={rule} rules={rules} />
@@ -907,6 +953,7 @@ function SubRulesItem({
   deleteDataCache,
 }) {
   const [loading, setLoading] = useState(false);
+  const alert = useAlert();
 
   const handleDel = async () => {
     try {
@@ -914,7 +961,7 @@ function SubRulesItem({
       await delSubRules(url);
       await deleteDataCache(url);
     } catch (err) {
-      kissLog(err, "del subrules");
+      kissLog("del subrules", err);
     }
   };
 
@@ -927,7 +974,13 @@ function SubRulesItem({
       }
       await updateDataCache(url);
     } catch (err) {
-      kissLog(err, "sync sub rules");
+      kissLog("sync sub rules", err);
+      alert.error(
+        <>
+          <p>Sync Error:</p>
+          <pre>{err.message}</pre>
+        </>
+      );
     } finally {
       setLoading(false);
     }
@@ -990,7 +1043,7 @@ function SubRulesEdit({ subList, addSub, updateDataCache }) {
       return;
     }
 
-    if (subList.find((item) => item.url === url)) {
+    if (subList.some((item) => item.url === url)) {
       setInputError(i18n("error_duplicate_values"));
       return;
     }
@@ -1006,7 +1059,7 @@ function SubRulesEdit({ subList, addSub, updateDataCache }) {
       setShowInput(false);
       setInputText("");
     } catch (err) {
-      kissLog(err, "fetch rules");
+      kissLog("fetch rules", err);
       setInputError(i18n("error_fetch_url"));
     } finally {
       setLoading(false);
@@ -1140,10 +1193,33 @@ function SubRules({ subRules }) {
   );
 }
 
+function GlobalRule({ rules }) {
+  const globalRule = useMemo(
+    () => rules.list[rules.list.length - 1],
+    [rules.list]
+  );
+
+  if (!globalRule) {
+    return;
+  }
+
+  return (
+    <Stack spacing={3}>
+      <RuleAccordion
+        key={globalRule.pattern}
+        rule={globalRule}
+        rules={rules}
+        isExpanded={true}
+      />
+    </Stack>
+  );
+}
+
 export default function Rules() {
   const i18n = useI18n();
   const [activeTab, setActiveTab] = useState(0);
   const subRules = useSubRules();
+  const rules = useRules();
 
   const handleTabChange = (e, newValue) => {
     setActiveTab(newValue);
@@ -1162,18 +1238,22 @@ export default function Rules() {
 
         <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
           <Tabs value={activeTab} onChange={handleTabChange}>
+            <Tab label={i18n("global_rule")} />
             <Tab label={i18n("personal_rules")} />
             <Tab label={i18n("subscribe_rules")} />
-            <Tab label={i18n("overwrite_subscribe_rules")} />
+            {/* <Tab label={i18n("overwrite_subscribe_rules")} /> */}
           </Tabs>
         </Box>
         <div hidden={activeTab !== 0}>
-          {activeTab === 0 && <UserRules subRules={subRules} />}
+          {activeTab === 0 && <GlobalRule rules={rules} />}
         </div>
         <div hidden={activeTab !== 1}>
-          {activeTab === 1 && <SubRules subRules={subRules} />}
+          {activeTab === 1 && <UserRules subRules={subRules} rules={rules} />}
         </div>
-        <div hidden={activeTab !== 2}>{activeTab === 2 && <OwSubRule />}</div>
+        <div hidden={activeTab !== 2}>
+          {activeTab === 2 && <SubRules subRules={subRules} />}
+        </div>
+        {/* <div hidden={activeTab !== 3}>{activeTab === 3 && <OwSubRule />}</div> */}
       </Stack>
     </Box>
   );

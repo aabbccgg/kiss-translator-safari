@@ -177,7 +177,7 @@ export const sha256 = async (text, salt) => {
  * 生成随机事件名称
  * @returns
  */
-export const genEventName = () => btoa(Math.random()).slice(3, 11);
+export const genEventName = () => `kiss-${btoa(Math.random()).slice(3, 11)}`;
 
 /**
  * 判断两个 Set 是否相同
@@ -198,6 +198,8 @@ export const isSameSet = (a, b) => {
  * @returns
  */
 export const removeEndchar = (s, c, count = 1) => {
+  if (!s) return "";
+
   let i = s.length;
   while (i > s.length - count && s[i - 1] === c) {
     i--;
@@ -288,4 +290,86 @@ export const parseJsonObj = (str) => {
   }
 
   return {};
+};
+
+/**
+ * 提取json内容
+ * @param {*} s
+ * @returns
+ */
+export const extractJson = (raw) => {
+  const jsonRegex = /({.*}|\[.*\])/s;
+  const match = raw.match(jsonRegex);
+  return match ? match[0] : null;
+};
+
+/**
+ * 空闲执行
+ * @param {*} cb
+ * @param {*} timeout
+ * @returns
+ */
+export const scheduleIdle = (cb, timeout = 200) => {
+  if (window.requestIdleCallback) {
+    return requestIdleCallback(cb, { timeout });
+  }
+  return setTimeout(cb, timeout);
+};
+
+/**
+ * 截取url部分
+ * @param {*} href
+ * @returns
+ */
+export const parseUrlPattern = (href) => {
+  if (href.startsWith("file")) {
+    const filename = href.substring(href.lastIndexOf("/") + 1);
+    return filename;
+  } else if (href.startsWith("http")) {
+    const url = new URL(href);
+    return url.host;
+  }
+  return href;
+};
+
+/**
+ * 带超时的任务
+ * @param {Promise|Function} task - 任务
+ * @param {number} timeout - 超时时间 (毫秒)
+ * @param {string} [timeoutMsg] - 超时错误提示
+ * @returns {Promise}
+ */
+export const withTimeout = (task, timeout, timeoutMsg = "Task timed out") => {
+  const promise = typeof task === "function" ? task() : task;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(timeoutMsg)), timeout)
+    ),
+  ]);
+};
+
+/**
+ * 截短字符串
+ * @param {*} str
+ * @param {*} maxLength
+ * @returns
+ */
+export const truncateWords = (str, maxLength = 200) => {
+  if (typeof str !== "string") return "";
+  if (str.length <= maxLength) return str;
+  const truncated = str.slice(0, maxLength);
+  return truncated.slice(0, truncated.lastIndexOf(" ")) + " …";
+};
+
+/**
+ * 生成随机数
+ * @param {*} min
+ * @param {*} max
+ * @param {*} integer
+ * @returns
+ */
+export const randomBetween = (min, max, integer = true) => {
+  const value = Math.random() * (max - min) + min;
+  return integer ? Math.floor(value) : value;
 };

@@ -2,6 +2,7 @@ import browser from "webextension-polyfill";
 import {
   MSG_FETCH,
   MSG_GET_HTTPCACHE,
+  MSG_PUT_HTTPCACHE,
   MSG_TRANS_TOGGLE,
   MSG_OPEN_OPTIONS,
   MSG_SAVE_RULE,
@@ -12,27 +13,34 @@ import {
   MSG_INJECT_JS,
   MSG_INJECT_CSS,
   MSG_UPDATE_CSP,
+  MSG_BUILTINAI_DETECT,
+  MSG_BUILTINAI_TRANSLATE,
   DEFAULT_CSPLIST,
+  DEFAULT_ORILIST,
   CMD_TOGGLE_TRANSLATE,
   CMD_TOGGLE_STYLE,
   CMD_OPEN_OPTIONS,
   CMD_OPEN_TRANBOX,
   CLIENT_THUNDERBIRD,
+  MSG_SET_LOGLEVEL,
 } from "./config";
 import { getSettingWithDefault, tryInitDefaultData } from "./libs/storage";
 import { trySyncSettingAndRules } from "./libs/sync";
-import { fetchHandle, getHttpCache } from "./libs/fetch";
+import { fetchHandle } from "./libs/fetch";
+import { tryClearCaches, getHttpCache, putHttpCache } from "./libs/cache";
 import { sendTabMsg } from "./libs/msg";
 import { trySyncAllSubRules } from "./libs/subRules";
-import { tryClearCaches } from "./libs";
 import { saveRule } from "./libs/rules";
 import { getCurTabId } from "./libs/msg";
 import { injectInlineJs, injectInternalCss } from "./libs/injector";
-import { kissLog } from "./libs/log";
+import { kissLog, logger } from "./libs/log";
+import { chromeDetect, chromeTranslate } from "./libs/builtinAI";
 
 globalThis.ContextType = "BACKGROUND";
 
-const REMOVE_HEADERS = [
+const CSP_RULE_START_ID = 1;
+const ORI_RULE_START_ID = 10000;
+const CSP_REMOVE_HEADERS = [
   `content-security-policy`,
   `content-security-policy-report-only`,
   `x-webkit-csp`,
@@ -47,7 +55,7 @@ async function addContextMenus(contextMenuType = 1) {
   try {
     await browser.contextMenus.removeAll();
   } catch (err) {
-    kissLog(err, "remove contextMenus");
+    kissLog("remove contextMenus", err);
   }
 
   switch (contextMenuType) {
@@ -93,17 +101,34 @@ async function addContextMenus(contextMenuType = 1) {
  * 更新CSP策略
  * @param {*} csplist
  */
-async function updateCspRules(csplist = DEFAULT_CSPLIST.join(",\n")) {
+async function updateCspRules({ csplist, orilist }) {
   try {
-    const newRules = csplist
-      .split(/\n|,/)
-      .map((url) => url.trim())
-      .filter(Boolean)
-      .map((url, idx) => ({
-        id: idx + 1,
+    const oldRules = await browser.declarativeNetRequest.getDynamicRules();
+
+    const rulesToAdd = [];
+    const idsToRemove = [];
+
+    if (csplist !== undefined) {
+      let processedCspList = csplist;
+      if (typeof processedCspList === "string") {
+        processedCspList = processedCspList
+          .split(/\n|,/)
+          .map((url) => url.trim())
+          .filter(Boolean);
+      }
+
+      const oldCspRuleIds = oldRules
+        .filter(
+          (rule) => rule.id >= CSP_RULE_START_ID && rule.id < ORI_RULE_START_ID
+        )
+        .map((rule) => rule.id);
+      idsToRemove.push(...oldCspRuleIds);
+
+      const newCspRules = processedCspList.map((url, index) => ({
+        id: CSP_RULE_START_ID + index,
         action: {
           type: "modifyHeaders",
-          responseHeaders: REMOVE_HEADERS.map((header) => ({
+          responseHeaders: CSP_REMOVE_HEADERS.map((header) => ({
             operation: "remove",
             header,
           })),
@@ -113,14 +138,45 @@ async function updateCspRules(csplist = DEFAULT_CSPLIST.join(",\n")) {
           resourceTypes: ["main_frame", "sub_frame"],
         },
       }));
-    const oldRules = await browser.declarativeNetRequest.getDynamicRules();
-    const oldRuleIds = oldRules.map((rule) => rule.id);
-    await browser.declarativeNetRequest.updateDynamicRules({
-      removeRuleIds: oldRuleIds,
-      addRules: newRules,
-    });
+      rulesToAdd.push(...newCspRules);
+    }
+
+    if (orilist !== undefined) {
+      let processedOriList = orilist;
+      if (typeof processedOriList === "string") {
+        processedOriList = processedOriList
+          .split(/\n|,/)
+          .map((url) => url.trim())
+          .filter(Boolean);
+      }
+
+      const oldOriRuleIds = oldRules
+        .filter((rule) => rule.id >= ORI_RULE_START_ID)
+        .map((rule) => rule.id);
+      idsToRemove.push(...oldOriRuleIds);
+
+      const newOriRules = processedOriList.map((url, index) => ({
+        id: ORI_RULE_START_ID + index,
+        action: {
+          type: "modifyHeaders",
+          requestHeaders: [{ header: "Origin", operation: "set", value: url }],
+        },
+        condition: {
+          urlFilter: url,
+          resourceTypes: ["xmlhttprequest"],
+        },
+      }));
+      rulesToAdd.push(...newOriRules);
+    }
+
+    if (idsToRemove.length > 0 || rulesToAdd.length > 0) {
+      await browser.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: idsToRemove,
+        addRules: rulesToAdd,
+      });
+    }
   } catch (err) {
-    kissLog(err, "update csp rules");
+    kissLog("update csp rules", err);
   }
 }
 
@@ -148,18 +204,24 @@ browser.runtime.onInstalled.addListener(() => {
   addContextMenus();
 
   // 禁用CSP
-  updateCspRules();
+  updateCspRules({ csplist: DEFAULT_CSPLIST, orilist: DEFAULT_ORILIST });
 });
 
 /**
  * 浏览器启动
  */
 browser.runtime.onStartup.addListener(async () => {
-  // 同步数据
-  await trySyncSettingAndRules();
+  const {
+    clearCache,
+    contextMenuType,
+    subrulesList,
+    csplist,
+    orilist,
+    logLevel,
+  } = await getSettingWithDefault();
 
-  const { clearCache, contextMenuType, subrulesList, csplist } =
-    await getSettingWithDefault();
+  // 设置日志
+  logger.setLevel(logLevel);
 
   // 清除缓存
   if (clearCache) {
@@ -176,48 +238,64 @@ browser.runtime.onStartup.addListener(async () => {
   addContextMenus(contextMenuType);
 
   // 禁用CSP
-  updateCspRules(csplist);
+  updateCspRules({ csplist, orilist });
+
+  // 同步数据
+  trySyncSettingAndRules();
 
   // 同步订阅规则
   trySyncAllSubRules({ subrulesList });
 });
 
 /**
+ * 向当前活动标签页注入脚本或CSS
+ */
+const injectToCurrentTab = async (func, args) => {
+  const tabId = await getCurTabId();
+  return browser.scripting.executeScript({
+    target: { tabId, allFrames: true },
+    func: func,
+    args: [args],
+    world: "MAIN",
+  });
+};
+
+// 动作处理器映射表
+const messageHandlers = {
+  [MSG_FETCH]: (args) => fetchHandle(args),
+  [MSG_GET_HTTPCACHE]: (args) => getHttpCache(args),
+  [MSG_PUT_HTTPCACHE]: (args) => putHttpCache(args),
+  [MSG_OPEN_OPTIONS]: () => browser.runtime.openOptionsPage(),
+  [MSG_SAVE_RULE]: (args) => saveRule(args),
+  [MSG_INJECT_JS]: (args) => injectToCurrentTab(injectInlineJs, args),
+  [MSG_INJECT_CSS]: (args) => injectToCurrentTab(injectInternalCss, args),
+  [MSG_UPDATE_CSP]: (args) => updateCspRules(args),
+  [MSG_CONTEXT_MENUS]: (args) => addContextMenus(args),
+  [MSG_COMMAND_SHORTCUTS]: () => browser.commands.getAll(),
+  [MSG_BUILTINAI_DETECT]: (args) => chromeDetect(args),
+  [MSG_BUILTINAI_TRANSLATE]: (args) => chromeTranslate(args),
+  [MSG_SET_LOGLEVEL]: (args) => logger.setLevel(args),
+};
+
+/**
  * 监听消息
+ * todo: 返回含错误的结构化信息
  */
 browser.runtime.onMessage.addListener(async ({ action, args }) => {
-  switch (action) {
-    case MSG_FETCH:
-      return await fetchHandle(args);
-    case MSG_GET_HTTPCACHE:
-      const { input, init } = args;
-      return await getHttpCache(input, init);
-    case MSG_OPEN_OPTIONS:
-      return await browser.runtime.openOptionsPage();
-    case MSG_SAVE_RULE:
-      return await saveRule(args);
-    case MSG_INJECT_JS:
-      return await browser.scripting.executeScript({
-        target: { tabId: await getCurTabId(), allFrames: true },
-        func: injectInlineJs,
-        args: [args],
-        world: "MAIN",
-      });
-    case MSG_INJECT_CSS:
-      return await browser.scripting.executeScript({
-        target: { tabId: await getCurTabId(), allFrames: true },
-        func: injectInternalCss,
-        args: [args],
-        world: "MAIN",
-      });
-    case MSG_UPDATE_CSP:
-      return await updateCspRules(args);
-    case MSG_CONTEXT_MENUS:
-      return await addContextMenus(args);
-    case MSG_COMMAND_SHORTCUTS:
-      return await browser.commands.getAll();
-    default:
-      throw new Error(`message action is unavailable: ${action}`);
+  const handler = messageHandlers[action];
+
+  if (!handler) {
+    const errorMessage = `Message action is unavailable: ${action}`;
+    kissLog("runtime onMessage", action, new Error(errorMessage));
+    return null;
+  }
+
+  try {
+    const result = await handler(args);
+    return result;
+  } catch (err) {
+    kissLog("runtime onMessage", action, err);
+    return null;
   }
 });
 

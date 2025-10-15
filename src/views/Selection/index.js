@@ -10,7 +10,6 @@ import {
   OPT_TRANBOX_TRIGGER_CLICK,
   OPT_TRANBOX_TRIGGER_HOVER,
   OPT_TRANBOX_TRIGGER_SELECT,
-  OPT_DICT_BAIDU,
 } from "../../config";
 import { isMobile } from "../../libs/mobile";
 import { kissLog } from "../../libs/log";
@@ -30,12 +29,11 @@ export default function Slection({
     followSelection: initFollowMouse = false,
     tranboxShortcut = DEFAULT_TRANBOX_SHORTCUT,
     triggerMode = OPT_TRANBOX_TRIGGER_CLICK,
-    extStyles,
+    // extStyles,
     btnOffsetX,
     btnOffsetY,
     boxOffsetX = 0,
     boxOffsetY = 10,
-    enDict = OPT_DICT_BAIDU,
   } = tranboxSetting;
 
   const boxWidth =
@@ -201,7 +199,7 @@ export default function Slection({
         });
       };
     } catch (err) {
-      kissLog(err, "registerMenuCommand");
+      kissLog("registerMenuCommand", err);
     }
   }, [handleTranbox, contextMenuType, langMap]);
 
@@ -236,9 +234,8 @@ export default function Slection({
           setHideClickAway={setHideClickAway}
           followSelection={followSelection}
           setFollowSelection={setFollowSelection}
-          extStyles={extStyles}
+          // extStyles={extStyles}
           langDetector={langDetector}
-          enDict={enDict}
         />
       )}
 

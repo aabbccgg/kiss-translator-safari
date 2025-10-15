@@ -9,9 +9,9 @@ import ThemeProvider from "../../hooks/Theme";
 import { useEffect, useState } from "react";
 import { isGm } from "../../libs/client";
 import { sleep } from "../../libs/utils";
-import CircularProgress from "@mui/material/CircularProgress";
 import { trySyncSettingAndRules } from "../../libs/sync";
 import { AlertProvider } from "../../hooks/Alert";
+import { ConfirmProvider } from "../../hooks/Confirm";
 import Link from "@mui/material/Link";
 import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
@@ -21,6 +21,10 @@ import Apis from "./Apis";
 import InputSetting from "./InputSetting";
 import Tranbox from "./Tranbox";
 import FavWords from "./FavWords";
+import Playgound from "./Playground";
+import MouseHoverSetting from "./MouseHover";
+import SubtitleSetting from "./Subtitle";
+import Loading from "../../hooks/Loading";
 
 export default function Options() {
   const [error, setError] = useState("");
@@ -90,36 +94,32 @@ export default function Options() {
   }
 
   if (!ready) {
-    return (
-      <center>
-        <Divider>
-          <Link
-            href={process.env.REACT_APP_HOMEPAGE}
-          >{`KISS Translator v${process.env.REACT_APP_VERSION}`}</Link>
-        </Divider>
-        <CircularProgress />
-      </center>
-    );
+    return <Loading />;
   }
 
   return (
     <SettingProvider>
       <ThemeProvider>
         <AlertProvider>
-          <HashRouter>
-            <Routes>
-              <Route path="/" element={<Layout />}>
-                <Route index element={<Setting />} />
-                <Route path="rules" element={<Rules />} />
-                <Route path="input" element={<InputSetting />} />
-                <Route path="tranbox" element={<Tranbox />} />
-                <Route path="apis" element={<Apis />} />
-                <Route path="sync" element={<SyncSetting />} />
-                <Route path="words" element={<FavWords />} />
-                <Route path="about" element={<About />} />
-              </Route>
-            </Routes>
-          </HashRouter>
+          <ConfirmProvider>
+            <HashRouter>
+              <Routes>
+                <Route path="/" element={<Layout />}>
+                  <Route index element={<Setting />} />
+                  <Route path="rules" element={<Rules />} />
+                  <Route path="input" element={<InputSetting />} />
+                  <Route path="tranbox" element={<Tranbox />} />
+                  <Route path="mousehover" element={<MouseHoverSetting />} />
+                  <Route path="subtitle" element={<SubtitleSetting />} />
+                  <Route path="apis" element={<Apis />} />
+                  <Route path="sync" element={<SyncSetting />} />
+                  <Route path="words" element={<FavWords />} />
+                  <Route path="playground" element={<Playgound />} />
+                  <Route path="about" element={<About />} />
+                </Route>
+              </Routes>
+            </HashRouter>
+          </ConfirmProvider>
         </AlertProvider>
       </ThemeProvider>
     </SettingProvider>

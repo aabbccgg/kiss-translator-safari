@@ -5,6 +5,7 @@ import MenuItem from "@mui/material/MenuItem";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Switch from "@mui/material/Switch";
 import Button from "@mui/material/Button";
+import Grid from "@mui/material/Grid";
 import { sendBgMsg, sendTabMsg, getCurTab } from "../../libs/msg";
 import { browser } from "../../libs/browser";
 import { isExt } from "../../libs/client";
@@ -19,25 +20,29 @@ import {
   MSG_OPEN_OPTIONS,
   MSG_SAVE_RULE,
   MSG_COMMAND_SHORTCUTS,
-  OPT_TRANS_ALL,
+  MSG_TRANSBOX_TOGGLE,
+  MSG_MOUSEHOVER_TOGGLE,
+  MSG_TRANSINPUT_TOGGLE,
   OPT_LANGS_FROM,
   OPT_LANGS_TO,
   OPT_STYLE_ALL,
-  DEFAULT_TRANS_APIS,
 } from "../../config";
 import { sendIframeMsg } from "../../libs/iframe";
 import { saveRule } from "../../libs/rules";
-import { tryClearCaches } from "../../libs";
+import { tryClearCaches } from "../../libs/cache";
 import { kissLog } from "../../libs/log";
+import { parseUrlPattern } from "../../libs/utils";
 
-export default function Popup({ setShowPopup, translator: tran }) {
+// 插件popup没有参数
+// 网页弹框有
+export default function Popup({ setShowPopup, translator }) {
   const i18n = useI18n();
-  const [rule, setRule] = useState(tran?.rule);
-  const [transApis, setTransApis] = useState(tran?.setting?.transApis || []);
+  const [rule, setRule] = useState(translator?.rule);
+  const [setting, setSetting] = useState(translator?.setting);
   const [commands, setCommands] = useState({});
 
   const handleOpenSetting = () => {
-    if (!tran) {
+    if (!translator) {
       browser?.runtime.openOptionsPage();
     } else if (isExt) {
       sendBgMsg(MSG_OPEN_OPTIONS);
@@ -51,14 +56,74 @@ export default function Popup({ setShowPopup, translator: tran }) {
     try {
       setRule({ ...rule, transOpen: e.target.checked ? "true" : "false" });
 
-      if (!tran) {
+      if (!translator) {
         await sendTabMsg(MSG_TRANS_TOGGLE);
       } else {
-        tran.toggle();
+        translator.toggle();
         sendIframeMsg(MSG_TRANS_TOGGLE);
       }
     } catch (err) {
-      kissLog(err, "toggle trans");
+      kissLog("toggle trans", err);
+    }
+  };
+
+  const handleTransboxToggle = async (e) => {
+    try {
+      setSetting((pre) => ({
+        ...pre,
+        tranboxSetting: { ...pre.tranboxSetting, transOpen: e.target.checked },
+      }));
+
+      if (!translator) {
+        await sendTabMsg(MSG_TRANSBOX_TOGGLE);
+      } else {
+        translator.toggleTransbox();
+        sendIframeMsg(MSG_TRANSBOX_TOGGLE);
+      }
+    } catch (err) {
+      kissLog("toggle transbox", err);
+    }
+  };
+
+  const handleMousehoverToggle = async (e) => {
+    try {
+      setSetting((pre) => ({
+        ...pre,
+        mouseHoverSetting: {
+          ...pre.mouseHoverSetting,
+          useMouseHover: e.target.checked,
+        },
+      }));
+
+      if (!translator) {
+        await sendTabMsg(MSG_MOUSEHOVER_TOGGLE);
+      } else {
+        translator.toggleMouseHover();
+        sendIframeMsg(MSG_MOUSEHOVER_TOGGLE);
+      }
+    } catch (err) {
+      kissLog("toggle mousehover", err);
+    }
+  };
+
+  const handleInputTransToggle = async (e) => {
+    try {
+      setSetting((pre) => ({
+        ...pre,
+        inputRule: {
+          ...pre.inputRule,
+          transOpen: e.target.checked,
+        },
+      }));
+
+      if (!translator) {
+        await sendTabMsg(MSG_TRANSINPUT_TOGGLE);
+      } else {
+        translator.toggleInputTranslate();
+        sendIframeMsg(MSG_TRANSINPUT_TOGGLE);
+      }
+    } catch (err) {
+      kissLog("toggle inputtrans", err);
     }
   };
 
@@ -67,14 +132,14 @@ export default function Popup({ setShowPopup, translator: tran }) {
       const { name, value } = e.target;
       setRule((pre) => ({ ...pre, [name]: value }));
 
-      if (!tran) {
+      if (!translator) {
         await sendTabMsg(MSG_TRANS_PUTRULE, { [name]: value });
       } else {
-        tran.updateRule({ [name]: value });
+        translator.updateRule({ [name]: value });
         sendIframeMsg(MSG_TRANS_PUTRULE, { [name]: value });
       }
     } catch (err) {
-      kissLog(err, "update rule");
+      kissLog("update rule", err);
     }
   };
 
@@ -84,24 +149,32 @@ export default function Popup({ setShowPopup, translator: tran }) {
 
   const handleSaveRule = async () => {
     try {
-      let href = window.location.href;
-      if (!tran) {
+      let href = "";
+      if (!translator) {
         const tab = await getCurTab();
         href = tab.url;
-      }
-      const newRule = { ...rule, pattern: href.split("/")[2] };
-      if (isExt && tran) {
-        sendBgMsg(MSG_SAVE_RULE, newRule);
       } else {
-        saveRule(newRule);
+        href = window.location?.href;
+      }
+
+      if (!href || typeof href !== "string") {
+        return;
+      }
+
+      const pattern = parseUrlPattern(href);
+      const curRule = { ...rule, pattern };
+      if (isExt && translator) {
+        sendBgMsg(MSG_SAVE_RULE, curRule);
+      } else {
+        saveRule(curRule);
       }
     } catch (err) {
-      kissLog(err, "save rule");
+      kissLog("save rule", err);
     }
   };
 
   useEffect(() => {
-    if (tran) {
+    if (translator) {
       return;
     }
     (async () => {
@@ -109,13 +182,13 @@ export default function Popup({ setShowPopup, translator: tran }) {
         const res = await sendTabMsg(MSG_TRANS_GETRULE);
         if (!res.error) {
           setRule(res.rule);
-          setTransApis(res.setting.transApis);
+          setSetting(res.setting);
         }
       } catch (err) {
-        kissLog(err, "query rule");
+        kissLog("query rule", err);
       }
     })();
-  }, [tran]);
+  }, [translator]);
 
   useEffect(() => {
     (async () => {
@@ -127,7 +200,7 @@ export default function Popup({ setShowPopup, translator: tran }) {
             commands[name] = shortcut;
           });
         } else {
-          const shortcuts = tran.setting.shortcuts;
+          const shortcuts = translator.setting.shortcuts;
           if (shortcuts) {
             Object.entries(shortcuts).forEach(([key, val]) => {
               commands[key] = val.join("+");
@@ -136,29 +209,30 @@ export default function Popup({ setShowPopup, translator: tran }) {
         }
         setCommands(commands);
       } catch (err) {
-        kissLog(err, "query cmds");
+        kissLog("query cmds", err);
       }
     })();
-  }, [tran]);
+  }, [translator]);
 
   const optApis = useMemo(
     () =>
-      OPT_TRANS_ALL.map((key) => ({
-        ...(transApis[key] || DEFAULT_TRANS_APIS[key]),
-        apiKey: key,
-      }))
-        .filter((item) => !item.isDisabled)
-        .map(({ apiKey, apiName }) => ({
-          key: apiKey,
-          name: apiName?.trim() || apiKey,
+      setting?.transApis
+        .filter((api) => !api.isDisabled)
+        .map((api) => ({
+          key: api.apiSlug,
+          name: api.apiName || api.apiSlug,
         })),
-    [transApis]
+    [setting]
   );
+
+  const tranboxEnabled = setting?.tranboxSetting.transOpen;
+  const mouseHoverEnabled = setting?.mouseHoverSetting.useMouseHover;
+  const inputTransEnabled = setting?.inputRule.transOpen;
 
   if (!rule) {
     return (
       <Box minWidth={300}>
-        {!tran && (
+        {!translator && (
           <>
             <Header />
             <Divider />
@@ -173,44 +247,149 @@ export default function Popup({ setShowPopup, translator: tran }) {
     );
   }
 
-  const { transOpen, translator, fromLang, toLang, textStyle } = rule;
+  const {
+    transOpen,
+    apiSlug,
+    fromLang,
+    toLang,
+    textStyle,
+    autoScan,
+    transOnly,
+    hasRichText,
+    hasShadowroot,
+  } = rule;
 
   return (
-    <Box minWidth={300}>
-      {!tran && (
+    <Box width={360}>
+      {!translator && (
         <>
           <Header />
           <Divider />
         </>
       )}
       <Stack sx={{ p: 2 }} spacing={2}>
-        <Stack
-          direction="row"
-          justifyContent="space-between"
-          alignItems="center"
-          spacing={2}
-        >
-          <FormControlLabel
-            control={
-              <Switch
-                checked={transOpen === "true"}
-                onChange={handleTransToggle}
-              />
-            }
-            label={
-              commands["toggleTranslate"]
-                ? `${i18n("translate_alt")}(${commands["toggleTranslate"]})`
-                : i18n("translate_alt")
-            }
-          />
-        </Stack>
+        <Grid container columns={12} spacing={1}>
+          <Grid item xs={12}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={transOpen === "true"}
+                  onChange={handleTransToggle}
+                />
+              }
+              label={
+                commands["toggleTranslate"]
+                  ? `${i18n("translate_alt")}(${commands["toggleTranslate"]})`
+                  : i18n("translate_alt")
+              }
+            />
+          </Grid>
+          <Grid item xs={6}>
+            <FormControlLabel
+              control={
+                <Switch
+                  size="small"
+                  name="autoScan"
+                  value={autoScan === "true" ? "false" : "true"}
+                  checked={autoScan === "true"}
+                  onChange={handleChange}
+                />
+              }
+              label={i18n("autoscan_alt")}
+            />
+          </Grid>
+          <Grid item xs={6}>
+            <FormControlLabel
+              control={
+                <Switch
+                  size="small"
+                  name="hasShadowroot"
+                  value={hasShadowroot === "true" ? "false" : "true"}
+                  checked={hasShadowroot === "true"}
+                  onChange={handleChange}
+                />
+              }
+              label={i18n("shadowroot_alt")}
+            />
+          </Grid>
+          <Grid item xs={6}>
+            <FormControlLabel
+              control={
+                <Switch
+                  size="small"
+                  name="hasRichText"
+                  value={hasRichText === "true" ? "false" : "true"}
+                  checked={hasRichText === "true"}
+                  onChange={handleChange}
+                />
+              }
+              label={i18n("richtext_alt")}
+            />
+          </Grid>
+          <Grid item xs={6}>
+            <FormControlLabel
+              control={
+                <Switch
+                  size="small"
+                  name="transOnly"
+                  value={transOnly === "true" ? "false" : "true"}
+                  checked={transOnly === "true"}
+                  onChange={handleChange}
+                />
+              }
+              label={i18n("transonly_alt")}
+            />
+          </Grid>
+          <Grid item xs={6}>
+            <FormControlLabel
+              control={
+                <Switch
+                  size="small"
+                  name="tranboxEnabled"
+                  value={!tranboxEnabled}
+                  checked={tranboxEnabled}
+                  onChange={handleTransboxToggle}
+                />
+              }
+              label={i18n("selection_translate")}
+            />
+          </Grid>
+          <Grid item xs={6}>
+            <FormControlLabel
+              control={
+                <Switch
+                  size="small"
+                  name="mouseHoverEnabled"
+                  value={!mouseHoverEnabled}
+                  checked={mouseHoverEnabled}
+                  onChange={handleMousehoverToggle}
+                />
+              }
+              label={i18n("mousehover_translate")}
+            />
+          </Grid>
+          <Grid item xs={6}>
+            <FormControlLabel
+              control={
+                <Switch
+                  size="small"
+                  name="inputTransEnabled"
+                  value={!inputTransEnabled}
+                  checked={inputTransEnabled}
+                  onChange={handleInputTransToggle}
+                />
+              }
+              label={i18n("input_translate")}
+            />
+          </Grid>
+        </Grid>
 
         <TextField
           select
           SelectProps={{ MenuProps: { disablePortal: true } }}
           size="small"
-          value={translator}
-          name="translator"
+          value={apiSlug}
+          name="apiSlug"
           label={i18n("translate_service")}
           onChange={handleChange}
         >

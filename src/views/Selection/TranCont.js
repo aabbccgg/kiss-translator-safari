@@ -3,65 +3,60 @@ import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
 import { useI18n } from "../../hooks/I18n";
-import { DEFAULT_TRANS_APIS } from "../../config";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { apiTranslate } from "../../apis";
 import CopyBtn from "./CopyBtn";
 import Typography from "@mui/material/Typography";
 import Alert from "@mui/material/Alert";
-import { tryDetectLang } from "../../libs";
 
 export default function TranCont({
   text,
-  translator,
   fromLang,
   toLang,
-  toLang2 = "en",
+  apiSlug,
   transApis,
-  simpleStyle,
-  langDetector,
+  simpleStyle = false,
 }) {
   const i18n = useI18n();
   const [trText, setTrText] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const apiSetting = useMemo(
+    () => transApis.find((api) => api.apiSlug === apiSlug),
+    [transApis, apiSlug]
+  );
+
   useEffect(() => {
+    if (!text?.trim() || !apiSetting) {
+      return;
+    }
+
     (async () => {
       try {
         setLoading(true);
         setTrText("");
         setError("");
 
-        let to = toLang;
-        if (fromLang === "auto" && toLang !== toLang2 && toLang2 !== "none") {
-          const detectLang = await tryDetectLang(text, true, langDetector);
-          if (detectLang === toLang) {
-            to = toLang2;
-          }
-        }
-
-        const apiSetting =
-          transApis[translator] || DEFAULT_TRANS_APIS[translator];
-        const tranRes = await apiTranslate({
+        const [trText] = await apiTranslate({
           text,
-          translator,
           fromLang,
-          toLang: to,
+          toLang,
           apiSetting,
         });
-        setTrText(tranRes[0]);
+
+        setTrText(trText);
       } catch (err) {
         setError(err.message);
       } finally {
         setLoading(false);
       }
     })();
-  }, [text, translator, fromLang, toLang, toLang2, transApis, langDetector]);
+  }, [text, fromLang, toLang, apiSetting]);
 
   if (simpleStyle) {
     return (
-      <Box className="KT-transbox-target KT-transbox-target_simple">
+      <Box>
         {error ? (
           <Alert severity="error">{error}</Alert>
         ) : loading ? (
@@ -74,10 +69,10 @@ export default function TranCont({
   }
 
   return (
-    <Box className="KT-transbox-target KT-transbox-target_default">
+    <Box>
       <TextField
         size="small"
-        label={i18n("translated_text")}
+        label={`${i18n("translated_text")} - ${apiSetting.apiSlug}`}
         // disabled
         fullWidth
         multiline

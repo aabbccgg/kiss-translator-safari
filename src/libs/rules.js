@@ -1,18 +1,17 @@
 import { matchValue, type, isMatch } from "./utils";
 import {
   GLOBAL_KEY,
-  REMAIN_KEY,
-  OPT_TRANS_ALL,
   OPT_STYLE_ALL,
   OPT_LANGS_FROM,
   OPT_LANGS_TO,
-  OPT_TIMING_ALL,
+  // OPT_TIMING_ALL,
+  DEFAULT_RULE,
   GLOBLA_RULE,
 } from "../config";
 import { loadOrFetchSubRules } from "./subRules";
 import { getRulesWithDefault, setRules } from "./storage";
 import { trySyncRules } from "./sync";
-import { FIXER_ALL } from "./webfix";
+// import { FIXER_ALL } from "./webfix";
 import { kissLog } from "./log";
 
 /**
@@ -21,36 +20,17 @@ import { kissLog } from "./log";
  * @param {string} href
  * @returns
  */
-export const matchRule = async (
-  href,
-  { injectRules, subrulesList, owSubrule }
-) => {
+export const matchRule = async (href, { injectRules, subrulesList }) => {
   const rules = await getRulesWithDefault();
   if (injectRules) {
     try {
       const selectedSub = subrulesList.find((item) => item.selected);
       if (selectedSub?.url) {
-        const mixRule = {};
-        Object.entries(owSubrule)
-          .filter(([key, val]) => {
-            if (
-              owSubrule.textStyle === REMAIN_KEY &&
-              (key === "bgColor" || key === "textDiyStyle")
-            ) {
-              return false;
-            }
-            return val !== REMAIN_KEY;
-          })
-          .forEach(([key, val]) => {
-            mixRule[key] = val;
-          });
-
-        let subRules = await loadOrFetchSubRules(selectedSub.url);
-        subRules = subRules.map((item) => ({ ...item, ...mixRule }));
+        const subRules = await loadOrFetchSubRules(selectedSub.url);
         rules.splice(-1, 0, ...subRules);
       }
     } catch (err) {
-      kissLog(err, "load injectRules");
+      kissLog("load injectRules", err);
     }
   }
 
@@ -68,15 +48,19 @@ export const matchRule = async (
   [
     "selector",
     "keepSelector",
+    "rootsSelector",
+    "ignoreSelector",
     "terms",
+    "aiTerms",
     "selectStyle",
     "parentStyle",
+    "grandStyle",
     "injectJs",
     "injectCss",
-    "fixerSelector",
+    // "fixerSelector",
     "transStartHook",
     "transEndHook",
-    "transRemoveHook",
+    // "transRemoveHook",
   ].forEach((key) => {
     if (!rule[key]?.trim()) {
       rule[key] = globalRule[key];
@@ -84,27 +68,29 @@ export const matchRule = async (
   });
 
   [
-    "translator",
+    "apiSlug",
     "fromLang",
     "toLang",
     "transOpen",
     "transOnly",
-    "transTiming",
+    // "transTiming",
+    "autoScan",
+    "hasRichText",
+    "hasShadowroot",
     "transTag",
     "transTitle",
-    "transSelected",
-    "detectRemote",
-    "fixerFunc",
+    // "detectRemote",
+    // "fixerFunc",
   ].forEach((key) => {
-    if (rule[key] === undefined || rule[key] === GLOBAL_KEY) {
+    if (!rule[key] || rule[key] === GLOBAL_KEY) {
       rule[key] = globalRule[key];
     }
   });
 
-  if (!rule.skipLangs || rule.skipLangs.length === 0) {
-    rule.skipLangs = globalRule.skipLangs;
-  }
-  if (rule.textStyle === GLOBAL_KEY) {
+  // if (!rule.skipLangs || rule.skipLangs.length === 0) {
+  //   rule.skipLangs = globalRule.skipLangs;
+  // }
+  if (!rule.textStyle || rule.textStyle === GLOBAL_KEY) {
     rule.textStyle = globalRule.textStyle;
     rule.bgColor = globalRule.bgColor;
     rule.textDiyStyle = globalRule.textDiyStyle;
@@ -146,12 +132,16 @@ export const checkRules = (rules) => {
         pattern,
         selector,
         keepSelector,
+        rootsSelector,
+        ignoreSelector,
         terms,
+        aiTerms,
         selectStyle,
         parentStyle,
+        grandStyle,
         injectJs,
         injectCss,
-        translator,
+        apiSlug,
         fromLang,
         toLang,
         textStyle,
@@ -159,46 +149,57 @@ export const checkRules = (rules) => {
         bgColor,
         textDiyStyle,
         transOnly,
-        transTiming,
+        autoScan,
+        hasRichText,
+        hasShadowroot,
+        // transTiming,
         transTag,
         transTitle,
-        transSelected,
-        detectRemote,
-        skipLangs,
-        fixerSelector,
-        fixerFunc,
+        // detectRemote,
+        // skipLangs,
+        // fixerSelector,
+        // fixerFunc,
         transStartHook,
         transEndHook,
-        transRemoveHook,
+        // transRemoveHook,
       }) => ({
         pattern: pattern.trim(),
         selector: type(selector) === "string" ? selector : "",
         keepSelector: type(keepSelector) === "string" ? keepSelector : "",
+        rootsSelector: type(rootsSelector) === "string" ? rootsSelector : "",
+        ignoreSelector: type(ignoreSelector) === "string" ? ignoreSelector : "",
         terms: type(terms) === "string" ? terms : "",
+        aiTerms: type(aiTerms) === "string" ? aiTerms : "",
         selectStyle: type(selectStyle) === "string" ? selectStyle : "",
         parentStyle: type(parentStyle) === "string" ? parentStyle : "",
+        grandStyle: type(grandStyle) === "string" ? grandStyle : "",
         injectJs: type(injectJs) === "string" ? injectJs : "",
         injectCss: type(injectCss) === "string" ? injectCss : "",
         bgColor: type(bgColor) === "string" ? bgColor : "",
         textDiyStyle: type(textDiyStyle) === "string" ? textDiyStyle : "",
-        translator: matchValue([GLOBAL_KEY, ...OPT_TRANS_ALL], translator),
+        apiSlug:
+          type(apiSlug) === "string" && apiSlug.trim() !== ""
+            ? apiSlug.trim()
+            : GLOBAL_KEY,
         fromLang: matchValue([GLOBAL_KEY, ...fromLangs], fromLang),
         toLang: matchValue([GLOBAL_KEY, ...toLangs], toLang),
         textStyle: matchValue([GLOBAL_KEY, ...OPT_STYLE_ALL], textStyle),
         transOpen: matchValue([GLOBAL_KEY, "true", "false"], transOpen),
         transOnly: matchValue([GLOBAL_KEY, "true", "false"], transOnly),
-        transTiming: matchValue([GLOBAL_KEY, ...OPT_TIMING_ALL], transTiming),
+        autoScan: matchValue([GLOBAL_KEY, "true", "false"], autoScan),
+        hasRichText: matchValue([GLOBAL_KEY, "true", "false"], hasRichText),
+        hasShadowroot: matchValue([GLOBAL_KEY, "true", "false"], hasShadowroot),
+        // transTiming: matchValue([GLOBAL_KEY, ...OPT_TIMING_ALL], transTiming),
         transTag: matchValue([GLOBAL_KEY, "span", "font"], transTag),
         transTitle: matchValue([GLOBAL_KEY, "true", "false"], transTitle),
-        transSelected: matchValue([GLOBAL_KEY, "true", "false"], transSelected),
-        detectRemote: matchValue([GLOBAL_KEY, "true", "false"], detectRemote),
-        skipLangs: type(skipLangs) === "array" ? skipLangs : [],
-        fixerSelector: type(fixerSelector) === "string" ? fixerSelector : "",
+        // detectRemote: matchValue([GLOBAL_KEY, "true", "false"], detectRemote),
+        // skipLangs: type(skipLangs) === "array" ? skipLangs : [],
+        // fixerSelector: type(fixerSelector) === "string" ? fixerSelector : "",
         transStartHook: type(transStartHook) === "string" ? transStartHook : "",
         transEndHook: type(transEndHook) === "string" ? transEndHook : "",
-        transRemoveHook:
-          type(transRemoveHook) === "string" ? transRemoveHook : "",
-        fixerFunc: matchValue([GLOBAL_KEY, ...FIXER_ALL], fixerFunc),
+        // transRemoveHook:
+        //   type(transRemoveHook) === "string" ? transRemoveHook : "",
+        // fixerFunc: matchValue([GLOBAL_KEY, ...FIXER_ALL], fixerFunc),
       })
     );
 
@@ -207,16 +208,28 @@ export const checkRules = (rules) => {
 
 /**
  * 保存或更新rule
- * @param {*} newRule
+ * @param {*} curRule
  */
-export const saveRule = async (newRule) => {
+export const saveRule = async (curRule) => {
   const rules = await getRulesWithDefault();
-  const rule = rules.find((item) => isMatch(newRule.pattern, item.pattern));
-  if (rule && rule.pattern !== GLOBAL_KEY) {
-    Object.assign(rule, { ...newRule, pattern: rule.pattern });
-  } else {
-    rules.unshift(newRule);
+
+  const index = rules.findIndex(
+    (item) =>
+      item.pattern !== GLOBAL_KEY && isMatch(curRule.pattern, item.pattern)
+  );
+  if (index !== -1) {
+    const rule = rules.splice(index, 1)[0];
+    curRule = { ...rule, ...curRule, pattern: rule.pattern };
   }
+
+  const newRule = {};
+  Object.entries(GLOBLA_RULE).forEach(([key, val]) => {
+    newRule[key] =
+      !curRule[key] || curRule[key] === val ? DEFAULT_RULE[key] : curRule[key];
+  });
+
+  rules.unshift(newRule);
   await setRules(rules);
+
   trySyncRules();
 };
