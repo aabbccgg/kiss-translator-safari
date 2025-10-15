@@ -22,7 +22,7 @@ jobs:
       
       - name: Merge upstream changes
         run: |
-          git checkout main  # 或你的默认分支
+          git checkout master  # 或你的默认分支
           git merge upstream/master --allow-unrelated-histories
       
       - name: Push changes
