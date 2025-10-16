@@ -137,46 +137,42 @@ ${customApiLangs}
 `;
 
 const requestHookHelperZH = `1、第一个参数包含如下字段：'texts', 'from', 'to', 'url', 'key', 'model', 'systemPrompt', ...
-2、返回值必须是包含以下字段的对象： 'url', 'body', 'headers', 'userMsg', 'method'
+2、返回值必须是包含以下字段的对象： 'url', 'body', 'headers', 'method'
 3、如返回空值，则hook函数不会产生任何效果。
 
 // 示例
 async (args, { url, body, headers, userMsg, method } = {}) => {
-  console.log("request hook args:", args);
   return { url, body, headers, userMsg, method };
 }`;
 
 const requestHookHelperEN = `1. The first parameter contains the following fields: 'texts', 'from', 'to', 'url', 'key', 'model', 'systemPrompt', ...
-2. The return value must be an object containing the following fields: 'url', 'body', 'headers', 'userMsg', 'method'
+2. The return value must be an object containing the following fields: 'url', 'body', 'headers', 'method'
 3. If a null value is returned, the hook function will have no effect.
 
 // Example
 async (args, { url, body, headers, userMsg, method } = {}) => {
-  console.log("request hook args:", args);
   return { url, body, headers, userMsg, method };
 }`;
 
 const responsetHookHelperZH = `1、第一个参数包含如下字段：'res', ...
-2、返回值必须是包含以下字段的对象： 'translations', 'modelMsg' 
+2、返回值必须是包含以下字段的对象： 'translations'
   （'translations' 应为一个二维数组：[[译文, 源语言]]）
 3、如返回空值，则hook函数不会产生任何效果。
 
 // 示例
 async ({ res, ...args }) => {
-  console.log("reaponse hook args:", res, args);
   const translations = [["你好", "zh"]];
   const modelMsg = "";
   return { translations, modelMsg };
 }`;
 
 const responsetHookHelperEN = `1. The first parameter contains the following fields: 'res', ...
-2. The return value must be an object containing the following fields: 'translations', 'modelMsg'
+2. The return value must be an object containing the following fields: 'translations'
   ('translations' should be a two-dimensional array: [[translation, source language]]).
 3. If a null value is returned, the hook function will have no effect.
 
 // Example
 async ({ res, ...args }) => {
-  console.log("reaponse hook args:", res, args);
   const translations = [["你好", "zh"]];
   const modelMsg = "";
   return { translations, modelMsg };
@@ -717,6 +713,11 @@ export const I18N = {
     zh: `选择器节点样式`,
     en: `Selector Style`,
     zh_TW: `選擇器節點樣式`,
+  },
+  terms_style: {
+    zh: `专业术语样式`,
+    en: `Terms Style`,
+    zh_TW: `專業術語樣式`,
   },
   selector_style_helper: {
     zh: `开启翻译时注入。`,

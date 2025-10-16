@@ -1,7 +1,7 @@
 export const DEFAULT_HTTP_TIMEOUT = 10000; // 调用超时时间
 export const DEFAULT_FETCH_LIMIT = 10; // 默认最大任务数量
 export const DEFAULT_FETCH_INTERVAL = 100; // 默认任务间隔时间
-export const DEFAULT_BATCH_INTERVAL = 1000; // 批处理请求间隔时间
+export const DEFAULT_BATCH_INTERVAL = 400; // 批处理请求间隔时间
 export const DEFAULT_BATCH_SIZE = 10; // 每次最多发送段落数量
 export const DEFAULT_BATCH_LENGTH = 10000; // 每次发送最大文字数量
 export const DEFAULT_CONTEXT_SIZE = 3; // 上下文会话数量
@@ -409,16 +409,16 @@ Good morning.
 \`\`\``;
 
 const defaultRequestHook = `async (args, { url, body, headers, userMsg, method } = {}) => {
-  console.log("request hook args:", args);
+  console.log("request hook args:", { args, url, body, headers, userMsg, method });
   // return { url, body, headers, userMsg, method };
-}`;
+};`;
 
 const defaultResponseHook = `async ({ res, ...args }) => {
-  console.log("reaponse hook args:", res, args);
+  console.log("reaponse hook args:", { res, args });
   // const translations = [["你好", "zh"]];
   // const modelMsg = "";
   // return { translations, modelMsg };
-}`;
+};`;
 
 // 翻译接口默认参数
 const defaultApi = {

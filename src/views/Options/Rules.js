@@ -97,6 +97,7 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
     ignoreSelector = "",
     terms = "",
     aiTerms = "",
+    termsStyle = "",
     selectStyle = "",
     parentStyle = "",
     grandStyle = "",
@@ -549,8 +550,17 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
 
             <TextField
               size="small"
+              label={i18n("terms_style")}
+              name="termsStyle"
+              value={termsStyle}
+              disabled={disabled}
+              onChange={handleChange}
+              maxRows={10}
+              multiline
+            />
+            <TextField
+              size="small"
               label={i18n("selector_style")}
-              helperText={i18n("selector_style_helper")}
               name="selectStyle"
               value={selectStyle}
               disabled={disabled}
@@ -561,7 +571,6 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
             <TextField
               size="small"
               label={i18n("selector_parent_style")}
-              helperText={i18n("selector_style_helper")}
               name="parentStyle"
               value={parentStyle}
               disabled={disabled}
@@ -572,7 +581,6 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
             <TextField
               size="small"
               label={i18n("selector_grand_style")}
-              helperText={i18n("selector_style_helper")}
               name="grandStyle"
               value={grandStyle}
               disabled={disabled}
@@ -867,9 +875,9 @@ function UserRules({ subRules, rules }) {
 
         <UploadButton text={i18n("import")} handleImport={handleImport} />
         <DownloadButton
-          handleData={() => JSON.stringify([...rules.list].reverse(), null, 2)}
+          handleData={() => JSON.stringify([...rules.list], null, 2)}
           text={i18n("export")}
-          fileName={`kiss-rules_${Date.now()}.json`}
+          fileName={`kiss-rules_v2_${Date.now()}.json`}
         />
         <DownloadButton
           handleData={async () => JSON.stringify(await getRulesOld(), null, 2)}
