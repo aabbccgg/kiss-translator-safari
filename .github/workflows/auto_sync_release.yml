@@ -3,7 +3,7 @@ name: Sync Upstream Releases
 on:
   workflow_dispatch:  # 允许手动触发
   schedule:
-    - cron: '0 * * * *' # 每天 1小时 运行一次
+    - cron: '0 */4 * * *' # 每天 1小时 运行一次
 
 jobs:
   sync:
@@ -14,6 +14,10 @@ jobs:
         with:
           token: ${{ secrets.PAT }}
           fetch-depth: 0
+      - name: Configure Git
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
       
       - name: Add upstream remote
         run: |
