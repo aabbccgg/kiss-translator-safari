@@ -1,4 +1,5 @@
-
+# kiss-translator-safari
+### A Kiss translator's MacOS Safari extension version
 ---
 **Using kiss‑translator on macOS Safari**
 
