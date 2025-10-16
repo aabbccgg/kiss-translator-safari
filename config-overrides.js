@@ -106,6 +106,7 @@ const userscriptWebpack = (config, env) => {
 // @connect       openai.azure.com
 // @connect       workers.dev
 // @connect       github.io
+// @connect       github.com
 // @connect       githubusercontent.com
 // @connect       kiss-translator.rayjar.com
 // @connect       ghproxy.com
@@ -130,7 +131,6 @@ const userscriptWebpack = (config, env) => {
   config.entry = {
     main: paths.appIndexJs,
     options: paths.appSrc + "/options.js",
-    injector: paths.appSrc + "/injector.js",
     "kiss-translator.user": paths.appSrc + "/userscript.js",
   };
 

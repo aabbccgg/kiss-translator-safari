@@ -20,6 +20,7 @@ import { trySyncAllSubRules } from "./libs/subRules";
 import { isInBlacklist } from "./libs/blacklist";
 import { runSubtitle } from "./subtitle/subtitle";
 import { logger } from "./libs/log";
+import { injectInlineJs } from "./libs/injector";
 
 /**
  * 油猴脚本设置页面
@@ -35,9 +36,10 @@ function runSettingPage() {
     const ping = genEventName();
     window.addEventListener(ping, handlePing);
     // window.eval(`(${injectScript})("${ping}")`); // eslint-disable-line
-    const script = document.createElement("script");
-    script.textContent = `(${injectScript})("${ping}")`;
-    document.head.append(script);
+    injectInlineJs(
+      `(${injectScript})("${ping}")`,
+      "kiss-translator-options-injector"
+    );
   }
 }
 
@@ -127,7 +129,7 @@ function showErr(message) {
   });
 
   const closeButton = document.createElement("span");
-  closeButton.innerHTML = "&times;";
+  closeButton.textContent = "×";
 
   Object.assign(closeButton.style, {
     position: "absolute",
@@ -216,7 +218,7 @@ export async function run(isUserscript = false) {
     }
 
     // 字幕翻译
-    runSubtitle({ href, setting, rule });
+    runSubtitle({ href, setting, rule, isUserscript });
 
     // 监听消息
     // !isUserscript && runtimeListener(translator);

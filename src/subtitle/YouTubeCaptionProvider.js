@@ -38,7 +38,6 @@ class YouTubeCaptionProvider {
 
   initialize() {
     window.addEventListener("message", (event) => {
-      if (event.source !== window) return;
       if (event.data?.type === MSG_XHR_DATA_YOUTUBE) {
         const { url, response } = event.data;
         if (url && response) {
@@ -66,23 +65,50 @@ class YouTubeCaptionProvider {
     });
   }
 
+  get #videoEl() {
+    return document.querySelector(VIDEO_SELECT);
+  }
+
   #moAds(adContainer) {
-    const adSlector = ".ytp-ad-player-overlay-layout";
+    const adLayoutSelector = ".ytp-ad-player-overlay-layout";
+    const skipBtnSelector =
+      ".ytp-skip-ad-button, .ytp-ad-skip-button, .ytp-ad-skip-button-modern";
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         if (mutation.type === "childList") {
+          const videoEl = this.#videoEl;
           mutation.addedNodes.forEach((node) => {
-            if (node.nodeType === 1 && node.matches(adSlector)) {
+            if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+            if (node.matches(adLayoutSelector)) {
               logger.debug("Youtube Provider: AD start playing!", node);
               // todo: 顺带把广告快速跳过
+              if (videoEl) {
+                videoEl.playbackRate = 16;
+                videoEl.currentTime = videoEl.duration;
+              }
               if (this.#managerInstance) {
                 this.#managerInstance.setIsAdPlaying(true);
               }
+            } else if (node.matches(skipBtnSelector)) {
+              logger.debug("Youtube Provider: AD skip button!", node);
+              node.click();
+            }
+
+            const skipBtn = node?.querySelector(skipBtnSelector);
+            if (skipBtn) {
+              logger.debug("Youtube Provider: AD skip button!!", skipBtn);
+              skipBtn.click();
             }
           });
           mutation.removedNodes.forEach((node) => {
-            if (node.nodeType === 1 && node.matches(adSlector)) {
+            if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+            if (node.matches(adLayoutSelector)) {
               logger.debug("Youtube Provider: Ad ends!");
+              if (videoEl) {
+                videoEl.playbackRate = 1;
+              }
               if (this.#managerInstance) {
                 this.#managerInstance.setIsAdPlaying(false);
               }
@@ -468,7 +494,7 @@ class YouTubeCaptionProvider {
       return;
     }
 
-    const videoEl = document.querySelector(VIDEO_SELECT);
+    const videoEl = this.#videoEl;
     if (!videoEl) {
       logger.warn("Youtube Provider: No video element found");
       return;
@@ -879,7 +905,7 @@ class YouTubeCaptionProvider {
       textAlign: "center",
     });
 
-    const videoEl = document.querySelector(VIDEO_SELECT);
+    const videoEl = this.#videoEl;
     const videoContainer = videoEl?.parentElement?.parentElement;
     if (videoContainer) {
       videoContainer.appendChild(notificationEl);

@@ -37,6 +37,7 @@ import { browser } from "./browser";
 import { isIframe, sendIframeMsg } from "./iframe";
 import { TransboxManager } from "./tranbox";
 import { InputTranslator } from "./inputTranslate";
+import { trustedTypesHelper } from "./trustedTypes";
 
 /**
  * @class Translator
@@ -1021,10 +1022,19 @@ export class Translator {
         return;
       }
 
-      inner.innerHTML = this.#restoreFromTranslation(
+      const htmlString = this.#restoreFromTranslation(
         translatedText,
         placeholderMap
       );
+      const trustedHTML = trustedTypesHelper.createHTML(htmlString);
+
+      // const parser = new DOMParser();
+      // const doc = parser.parseFromString(trustedHTML, "text/html");
+      // const innerElement = doc.body.firstChild;
+      // inner.replaceChildren(innerElement);
+
+      inner.innerHTML = trustedHTML;
+
       this.#translationNodes.set(wrapper, {
         nodes,
         isHide: hideOrigin,
@@ -1382,7 +1392,8 @@ export class Translator {
         injectJs && sendBgMsg(MSG_INJECT_JS, injectJs);
         injectCss && sendBgMsg(MSG_INJECT_CSS, injectCss);
       } else {
-        injectJs && injectInlineJs(injectJs);
+        injectJs &&
+          injectInlineJs(injectJs, "kiss-translator-userinit-injector");
         injectCss && injectInternalCss(injectCss);
       }
     } catch (err) {
