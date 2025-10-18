@@ -156,13 +156,13 @@ async (args, { url, body, headers, userMsg, method } = {}) => {
 
 const responsetHookHelperZH = `1、第一个参数包含如下字段：'res', ...
 2、返回值必须是包含以下字段的对象： 'translations'
-  （'translations' 应为一个二维数组：[[译文, 源语言]]）
+  （'translations' 应为一个二维数组：[[译文, 原文语言]]）
 3、如返回空值，则hook函数不会产生任何效果。
 
 // 示例
 async ({ res, ...args }) => {
-  const translations = [["你好", "zh"]];
-  const modelMsg = "";
+  const translations = [["你好", "en"]];
+  const modelMsg = {}; // 用于AI上下文
   return { translations, modelMsg };
 }`;
 
@@ -173,8 +173,8 @@ const responsetHookHelperEN = `1. The first parameter contains the following fie
 
 // Example
 async ({ res, ...args }) => {
-  const translations = [["你好", "zh"]];
-  const modelMsg = "";
+  const translations = [["你好", "en"]];
+  const modelMsg = {}; // For AI context
   return { translations, modelMsg };
 }`;
 
@@ -531,9 +531,9 @@ export const I18N = {
     zh_TW: `2.大部分AI介面都與OpenAI相容，因此選擇新增OpenAI類型即可。`,
   },
   about_api_3: {
-    zh: `2、暂未列出的接口，理论上都可以通过自定义接口 (Custom) 的形式支持。`,
-    en: `2. Interfaces that have not yet been launched can theoretically be supported through custom interfaces.`,
-    zh_TW: `2、暫未列出的介面，理論上都可透過自訂介面  (Custom)  的形式支援。`,
+    zh: `3、暂未列出的接口，理论上都可以通过自定义接口 (Custom) 的形式支持。`,
+    en: `3. Interfaces that have not yet been launched can theoretically be supported through custom interfaces.`,
+    zh_TW: `3、暫未列出的介面，理論上都可透過自訂介面  (Custom)  的形式支援。`,
   },
   about_api_proxy: {
     zh: `查看自建一个翻译接口代理`,
