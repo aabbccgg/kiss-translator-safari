@@ -1,5 +1,5 @@
 import {
-  APP_NAME,
+  APP_UPNAME,
   APP_LCNAME,
   APP_CONSTS,
   MSG_INJECT_JS,
@@ -10,17 +10,14 @@ import {
   // DEFAULT_MOUSEHOVER_KEY,
   OPT_STYLE_NONE,
   DEFAULT_API_SETTING,
-  MSG_TRANS_TOGGLE,
-  MSG_TRANS_TOGGLE_STYLE,
-  MSG_TRANS_GETRULE,
-  MSG_TRANS_PUTRULE,
-  MSG_OPEN_TRANBOX,
-  MSG_TRANSBOX_TOGGLE,
-  MSG_MOUSEHOVER_TOGGLE,
-  MSG_TRANSINPUT_TOGGLE,
+  OPT_HIGHLIGHT_WORDS_BEFORETRANS,
+  OPT_HIGHLIGHT_WORDS_AFTERTRANS,
+  OPT_SPLIT_PARAGRAPH_PUNCTUATION,
+  OPT_SPLIT_PARAGRAPH_DISABLE,
+  OPT_SPLIT_PARAGRAPH_TEXTLENGTH,
 } from "../config";
 import interpreter from "./interpreter";
-import { ShadowRootMonitor } from "./shadowroot";
+import ShadowRootMonitor from "./shadowRootMonitor";
 import { clearFetchPool } from "./pool";
 import { debounce, scheduleIdle, genEventName, truncateWords } from "./utils";
 import { apiTranslate } from "../apis";
@@ -33,10 +30,6 @@ import { genTextClass } from "./style";
 import { createLoadingSVG } from "./svg";
 import { shortcutRegister } from "./shortcut";
 import { tryDetectLang } from "./detect";
-import { browser } from "./browser";
-import { isIframe, sendIframeMsg } from "./iframe";
-import { TransboxManager } from "./tranbox";
-import { InputTranslator } from "./inputTranslate";
 import { trustedTypesHelper } from "./trustedTypes";
 
 /**
@@ -164,6 +157,8 @@ export class Translator {
     warpper: `${APP_LCNAME}-wrapper notranslate`,
     inner: `${APP_LCNAME}-inner`,
     term: `${APP_LCNAME}-term`,
+    br: `${APP_LCNAME}-br`,
+    highlight: `${APP_LCNAME}-highlight`,
   };
 
   // 内置跳过翻译文本
@@ -272,23 +267,21 @@ export class Translator {
   #combinedTermsRegex; // 专业术语正则表达式
   #combinedSkipsRegex; // 跳过文本正则表达式
   #placeholderRegex; // 恢复htnml正则表达式
-  #translationTagName = APP_NAME; // 翻译容器的标签名
+  #translationTagName = APP_UPNAME; // 翻译容器的标签名
   #eventName = ""; // 通信事件名称
   #docInfo = {}; // 网页信息
   #glossary = {}; // AI词典
   #textClass = {}; // 译文样式class
   #textSheet = ""; // 译文样式字典
   #apisMap = new Map(); // 用于接口快速查找
-
-  #isUserscript = false;
-  #transboxManager = null; // 划词翻译
-  #inputTranslator = null; // 输入框翻译
+  #favWords = []; // 收藏词汇
 
   #observedNodes = new WeakSet(); // 存储所有被识别出的、可翻译的 DOM 节点单元
   #translationNodes = new WeakMap(); // 存储所有插入到页面的译文节点
   #viewNodes = new Set(); // 当前在可视范围内的单元
   #processedNodes = new WeakMap(); // 已处理（已执行翻译DOM操作）的单元
   #rootNodes = new Set(); // 已监控的根节点
+  #skipMoNodes = new WeakSet(); // 忽略变化的节点
 
   #removeKeydownHandler; // 快捷键清理函数
   #hoveredNode = null; // 存储当前悬停的可翻译节点
@@ -330,14 +323,14 @@ export class Translator {
     };
   }
 
-  constructor(rule = {}, setting = {}, isUserscript = false) {
+  constructor({ rule = {}, setting = {}, favWords = [] }) {
     this.#setting = { ...Translator.DEFAULT_OPTIONS, ...setting };
     this.#rule = { ...Translator.DEFAULT_RULE, ...rule };
+    this.#favWords = favWords;
     this.#apisMap = new Map(
       this.#setting.transApis.map((api) => [api.apiSlug, api])
     );
 
-    this.#isUserscript = isUserscript;
     this.#eventName = genEventName();
     this.#docInfo = {
       title: document.title,
@@ -367,19 +360,6 @@ export class Translator {
     // 鼠标悬停翻译
     if (this.#setting.mouseHoverSetting.useMouseHover) {
       this.#enableMouseHover();
-    }
-
-    if (!isIframe) {
-      // 监听后端事件
-      if (!isUserscript) {
-        this.#runtimeListener();
-      }
-
-      // 划词翻译
-      this.#transboxManager = new TransboxManager(this.setting);
-
-      // 输入框翻译
-      this.#inputTranslator = new InputTranslator(this.setting);
     }
 
     if (document.readyState === "loading") {
@@ -422,43 +402,6 @@ export class Translator {
         kissLog("findAllShadowRoots", err);
       }
     }
-  }
-
-  // 监听后端事件
-  #runtimeListener() {
-    browser?.runtime.onMessage.addListener(async ({ action, args }) => {
-      switch (action) {
-        case MSG_TRANS_TOGGLE:
-          this.toggle();
-          sendIframeMsg(MSG_TRANS_TOGGLE);
-          break;
-        case MSG_TRANS_TOGGLE_STYLE:
-          this.toggleStyle();
-          sendIframeMsg(MSG_TRANS_TOGGLE_STYLE);
-          break;
-        case MSG_TRANS_GETRULE:
-          break;
-        case MSG_TRANS_PUTRULE:
-          this.updateRule(args);
-          sendIframeMsg(MSG_TRANS_PUTRULE, args);
-          break;
-        case MSG_OPEN_TRANBOX:
-          window.dispatchEvent(new CustomEvent(MSG_OPEN_TRANBOX));
-          break;
-        case MSG_TRANSBOX_TOGGLE:
-          this.toggleTransbox();
-          break;
-        case MSG_MOUSEHOVER_TOGGLE:
-          this.toggleMouseHover();
-          break;
-        case MSG_TRANSINPUT_TOGGLE:
-          this.toggleInputTranslate();
-          break;
-        default:
-          return { error: `message action is unavailable: ${action}` };
-      }
-      return { rule: this.rule, setting: this.setting };
-    });
   }
 
   #createPlaceholderRegex() {
@@ -585,6 +528,8 @@ export class Translator {
   #createMutationObserver() {
     return new MutationObserver((mutations) => {
       for (const mutation of mutations) {
+        if (this.#skipMoNodes.has(mutation.target)) return;
+
         if (
           mutation.type === "characterData" &&
           mutation.oldValue !== mutation.target.nodeValue
@@ -599,6 +544,8 @@ export class Translator {
           let nodes = new Set();
           let hasText = false;
           mutation.addedNodes.forEach((node) => {
+            if (this.#skipMoNodes.has(node)) return;
+
             if (/\S/.test(node.nodeValue)) {
               if (node.nodeType === Node.TEXT_NODE) {
                 hasText = true;
@@ -780,6 +727,10 @@ export class Translator {
 
   // 开始/重新监控节点
   #startObserveNode(node) {
+    if (this.#rule.highlightWords === OPT_HIGHLIGHT_WORDS_BEFORETRANS) {
+      this.#highlightWordsDeeply(node);
+    }
+
     if (
       !this.#observedNodes.has(node) &&
       this.#enabled &&
@@ -861,7 +812,12 @@ export class Translator {
 
     // 提前进行语言检测
     let deLang = "";
-    const { fromLang = "auto", toLang } = this.#rule;
+    const {
+      fromLang = "auto",
+      toLang,
+      splitParagraph = OPT_SPLIT_PARAGRAPH_DISABLE,
+      splitLength = 100,
+    } = this.#rule;
     const { langDetector, skipLangs = [] } = this.#setting;
     if (fromLang === "auto") {
       deLang = await tryDetectLang(node.textContent, langDetector);
@@ -874,6 +830,11 @@ export class Translator {
         // this.#processedNodes.delete(node);
         return;
       }
+    }
+
+    // 切分长段落
+    if (splitParagraph !== OPT_SPLIT_PARAGRAPH_DISABLE) {
+      this.#splitTextNodesBySentence(node, splitParagraph, splitLength);
     }
 
     let nodeGroup = [];
@@ -893,6 +854,171 @@ export class Translator {
     if (nodeGroup.length) {
       this.#translateNodeGroup(nodeGroup, node, deLang);
     }
+  }
+
+  // 高亮词汇
+  #highlightTextNode(textNode, wordRegex) {
+    if (textNode.parentNode?.nodeName.toLowerCase() === "b") {
+      return;
+    }
+
+    if (!wordRegex.test(textNode.textContent)) {
+      return;
+    }
+
+    wordRegex.lastIndex = 0;
+    const fragments = textNode.textContent.split(wordRegex);
+    const newNodes = [];
+
+    fragments.forEach((fragment, i) => {
+      if (!fragment) return;
+
+      if (i % 2 === 1) {
+        // 奇数索引是匹配到的关键词
+        const bTag = document.createElement("b");
+        bTag.className = Translator.KISS_CLASS.highlight;
+        bTag.style.cssText = this.#rule.highlightStyle || "";
+        bTag.textContent = fragment;
+        this.#skipMoNodes.add(bTag);
+        newNodes.push(bTag);
+      } else {
+        // 偶数索引是普通文本
+        const newTextNode = document.createTextNode(fragment);
+        this.#skipMoNodes.add(newTextNode);
+        newNodes.push(newTextNode);
+      }
+    });
+
+    if (newNodes.length > 0) {
+      textNode.replaceWith(...newNodes);
+    }
+  }
+
+  // 高亮词汇
+  #highlightWordsDeeply(parentNode) {
+    if (!parentNode || this.#favWords.length === 0) {
+      return;
+    }
+
+    const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const escapedWords = this.#favWords.map(escapeRegex);
+    const wordRegex = new RegExp(`\\b(${escapedWords.join("|")})\\b`, "gi");
+
+    if (parentNode.nodeType === Node.ELEMENT_NODE) {
+      const walker = document.createTreeWalker(
+        parentNode,
+        NodeFilter.SHOW_TEXT,
+        null,
+        false
+      );
+
+      const nodesToProcess = [];
+      let node;
+      while ((node = walker.nextNode())) {
+        nodesToProcess.push(node);
+      }
+
+      nodesToProcess.forEach((textNode) => {
+        this.#highlightTextNode(textNode, wordRegex);
+      });
+    } else if (parentNode.nodeType === Node.TEXT_NODE) {
+      this.#highlightTextNode(parentNode, wordRegex);
+    }
+  }
+
+  // 切分文本段落
+  #splitTextNodesBySentence(parentNode, splitParagraph, splitLength) {
+    const sentenceEndRegexForSplit = /[。！？]+|[.?!]+(?=\s+|$)/g;
+
+    [...parentNode.childNodes].forEach((node) => {
+      if (node.nodeType !== Node.TEXT_NODE || node.textContent.trim() === "") {
+        return;
+      }
+
+      const text = node.textContent;
+      const parts = [];
+      let lastIndex = 0;
+      let match;
+
+      while ((match = sentenceEndRegexForSplit.exec(text)) !== null) {
+        let realEndIndex = match.index + match[0].length;
+        while (realEndIndex < text.length && /\s/.test(text[realEndIndex])) {
+          realEndIndex++;
+        }
+        parts.push(text.substring(lastIndex, realEndIndex));
+        lastIndex = realEndIndex;
+        sentenceEndRegexForSplit.lastIndex = realEndIndex;
+      }
+      if (lastIndex < text.length) {
+        parts.push(text.substring(lastIndex));
+      }
+
+      const validParts = parts.filter((part) => part.trim().length > 0);
+      if (validParts.length <= 1) {
+        return;
+      }
+
+      const newNodes = validParts.map((part) => {
+        const newNode = document.createTextNode(part);
+        this.#skipMoNodes.add(newNode);
+        return newNode;
+      });
+
+      node.replaceWith(...newNodes);
+    });
+
+    const sentenceEndRegexForTest = /(?:[。！？?!]+|(?<!\d)\.)\s*$/;
+    let textLength = 0;
+
+    [...parentNode.childNodes].forEach((node) => {
+      textLength += node.textContent.length;
+
+      const isSentenceEnd = sentenceEndRegexForTest.test(node.textContent);
+      if (!isSentenceEnd || node.nextSibling?.nodeName === "BR") {
+        return;
+      }
+
+      if (
+        splitParagraph === OPT_SPLIT_PARAGRAPH_PUNCTUATION ||
+        (splitParagraph === OPT_SPLIT_PARAGRAPH_TEXTLENGTH &&
+          textLength >= splitLength)
+      ) {
+        textLength = 0;
+
+        const br = document.createElement("br");
+        br.className = Translator.KISS_CLASS.br;
+        this.#skipMoNodes.add(br);
+
+        node.after(br);
+      }
+    });
+  }
+
+  // 清除高亮
+  #removeHighlights(parentNode) {
+    if (!parentNode) return;
+
+    const highlightedElements = parentNode.querySelectorAll(
+      `.${Translator.KISS_CLASS.highlight}`
+    );
+
+    highlightedElements.forEach((element) => {
+      const textNode = document.createTextNode(element.textContent);
+      element.replaceWith(textNode);
+    });
+
+    parentNode.normalize();
+  }
+
+  // 移除br
+  #removeBrTags(parentNode) {
+    if (!parentNode) return;
+
+    parentNode
+      .querySelectorAll(`.${Translator.KISS_CLASS.br}`)
+      .forEach((br) => br.remove());
+
+    parentNode.normalize();
   }
 
   // 判断是否需要换行
@@ -971,6 +1097,7 @@ export class Translator {
       // detectRemote,
       // toLang,
       // skipLangs = [],
+      highlightWords,
     } = this.#rule;
     const {
       newlineLength,
@@ -1060,6 +1187,11 @@ export class Translator {
       }
       if (grandStyle && parentNode && parentNode.parentElement) {
         parentNode.parentElement.style.cssText += grandStyle;
+      }
+
+      // 高亮词汇
+      if (highlightWords === OPT_HIGHLIGHT_WORDS_AFTERTRANS) {
+        nodes.forEach((node) => this.#highlightWordsDeeply(node));
       }
 
       // 翻译完成钩子函数
@@ -1237,7 +1369,8 @@ export class Translator {
 
   // 清理译文
   #removeTranslationElement(el) {
-    this.#processedNodes.delete(el.parentElement);
+    const parentElement = el.parentElement;
+    this.#processedNodes.delete(parentElement);
 
     // 如果是仅显示译文模式，先恢复原文
     const { nodes, isHide } = this.#translationNodes.get(el) || {};
@@ -1247,6 +1380,12 @@ export class Translator {
 
     this.#translationNodes.delete(el);
     el.remove();
+
+    // todo: 可能不应深度清除
+    if (this.#rule.highlightWords === OPT_HIGHLIGHT_WORDS_AFTERTRANS) {
+      this.#removeHighlights(parentElement);
+    }
+    this.#removeBrTags(parentElement);
   }
 
   // 恢复原文
@@ -1509,13 +1648,11 @@ export class Translator {
   toggleTransbox() {
     this.#setting.tranboxSetting.transOpen =
       !this.#setting.tranboxSetting.transOpen;
-    this.#transboxManager?.toggle();
   }
 
   // 切换输入框翻译
   toggleInputTranslate() {
     this.#setting.inputRule.transOpen = !this.#setting.inputRule.transOpen;
-    this.#inputTranslator?.toggle();
   }
 
   // 停止运行
