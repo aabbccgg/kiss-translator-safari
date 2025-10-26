@@ -590,7 +590,7 @@ class YouTubeCaptionProvider {
     return subtitles;
   }
 
-  #isQualityPoor(lines, lengthThreshold = 250, percentageThreshold = 0.1) {
+  #isQualityPoor(lines, lengthThreshold = 250, percentageThreshold = 0.2) {
     if (lines.length === 0) return false;
     const longLinesCount = lines.filter(
       (line) => line.text.length > lengthThreshold
@@ -913,7 +913,7 @@ class YouTubeCaptionProvider {
     }
   }
 
-  #showNotification(message, duration = 3000) {
+  #showNotification(message, duration = 2000) {
     if (!this.#notificationEl) this.#createNotificationElement();
     this.#notificationEl.textContent = message;
     this.#notificationEl.style.opacity = "1";

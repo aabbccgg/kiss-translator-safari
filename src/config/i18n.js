@@ -1160,9 +1160,9 @@ export const I18N = {
     zh_TW: `觸控設定`,
   },
   touch_translate_shortcut: {
-    zh: `触屏翻译快捷方式`,
-    en: `Touch Translate Shortcut`,
-    zh_TW: `觸控翻譯捷徑`,
+    zh: `触屏翻译快捷方式 (支持多选)`,
+    en: `Touch Translate Shortcut (multiple supported)`,
+    zh_TW: `觸控翻譯捷徑 (支援多選)`,
   },
   touch_tap_0: {
     zh: `禁用`,
@@ -1348,6 +1348,11 @@ export const I18N = {
     zh: `翻译框跟随选中文本`,
     en: `Transbox Follow Selection`,
     zh_TW: `翻譯框跟隨選取文字`,
+  },
+  tranbox_auto_height: {
+    zh: `翻译框自适应高度`,
+    en: `Translation box adaptive height`,
+    zh_TW: `翻譯框自適應高度`,
   },
   translate_start_hook: {
     zh: `翻译开始钩子函数`,
