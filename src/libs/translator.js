@@ -2,8 +2,6 @@ import {
   APP_UPNAME,
   APP_LCNAME,
   APP_CONSTS,
-  MSG_INJECT_JS,
-  MSG_INJECT_CSS,
   OPT_STYLE_FUZZY,
   GLOBLA_RULE,
   DEFAULT_SETTING,
@@ -16,14 +14,10 @@ import {
   OPT_SPLIT_PARAGRAPH_DISABLE,
   OPT_SPLIT_PARAGRAPH_TEXTLENGTH,
 } from "../config";
-import interpreter from "./interpreter";
-import ShadowRootMonitor from "./shadowRootMonitor";
+import { interpreter } from "./interpreter";
 import { clearFetchPool } from "./pool";
 import { debounce, scheduleIdle, genEventName, truncateWords } from "./utils";
 import { apiTranslate } from "../apis";
-import { sendBgMsg } from "./msg";
-import { isExt } from "./client";
-import { injectInlineJs, injectInternalCss } from "./injector";
 import { kissLog } from "./log";
 import { clearAllBatchQueue } from "./batchQueue";
 import { genTextClass } from "./style";
@@ -31,6 +25,7 @@ import { createLoadingSVG } from "./svg";
 import { shortcutRegister } from "./shortcut";
 import { tryDetectLang } from "./detect";
 import { trustedTypesHelper } from "./trustedTypes";
+import { injectJs, INJECTOR } from "../injectors";
 
 /**
  * @class Translator
@@ -213,6 +208,10 @@ export class Translator {
   static DEFAULT_OPTIONS = DEFAULT_SETTING; // 默认配置
   static DEFAULT_RULE = GLOBLA_RULE; // 默认规则
 
+  static isElement(el) {
+    return el instanceof Element;
+  }
+
   static isElementOrFragment(el) {
     return el instanceof Element || el instanceof DocumentFragment;
   }
@@ -262,18 +261,23 @@ export class Translator {
   }
 
   // 内置忽略元素
+  static KISS_IGNORE_SELECTOR = `${APP_LCNAME}, .kiss-caption-container, .kiss-subtitle-controls
+  #${APP_CONSTS.fabID}, .${APP_CONSTS.fabID}_warpper,
+  #${APP_CONSTS.boxID}, .${APP_CONSTS.boxID}_warpper,
+  #${APP_CONSTS.popupID}, .${APP_CONSTS.popupID}_warpper`;
+
   static BUILTIN_IGNORE_SELECTOR = `address, area, audio, br, canvas, 
   data, datalist, embed, head, iframe, input, noscript, map, 
   object, option, param, picture, progress, 
   select, script, style, track, textarea, template, 
   video, wbr, .notranslate, [contenteditable], [translate='no'], 
-  ${APP_LCNAME}, #${APP_CONSTS.fabID}, #${APP_CONSTS.boxID}, 
-  .${APP_CONSTS.fabID}_warpper, .${APP_CONSTS.boxID}_warpper`;
+  ${Translator.KISS_IGNORE_SELECTOR}`;
 
   #setting; // 设置选项
   #rule; // 规则
   #isInitialized = false; // 初始化状态
   #isJsInjected = false; // 注入用户JS
+  #isShadowRootJsInjected = false; //
   #mouseHoverEnabled = false; // 鼠标悬停翻译
   #enabled = false; // 全局默认状态
   #runId = 0; // 用于中止过期的异步请求
@@ -301,17 +305,23 @@ export class Translator {
   #hoveredNode = null; // 存储当前悬停的可翻译节点
   #boundMouseMoveHandler; // 鼠标事件
   #boundKeyDownHandler; // 键盘事件
+  #windowMessageHandler = null;
+
+  #debouncedFindShadowRoot = null;
 
   #io; // IntersectionObserver
   #mo; // MutationObserver
   #dmm; // DebounceMouseMover
-  #srm; // ShadowRootMonitor
 
   #rescanQueue = new Set(); // “脏容器”队列
   #isQueueProcessing = false; // 队列处理状态标志
 
   // 忽略元素
   get #ignoreSelector() {
+    if (this.#rule.autoScan === "false") {
+      return `${Translator.KISS_IGNORE_SELECTOR}, ${this.#rule.ignoreSelector}`;
+    }
+
     return `${Translator.BUILTIN_IGNORE_SELECTOR}, ${this.#rule.ignoreSelector}`;
   }
 
@@ -364,12 +374,12 @@ export class Translator {
     this.#io = this.#createIntersectionObserver();
     this.#mo = this.#createMutationObserver();
     this.#dmm = this.#createDebounceMouseMover();
-    this.#srm = this.#createShadowRootMonitor();
 
-    // 监控shadowroot
-    if (this.#rule.hasShadowroot === "true") {
-      this.#srm.start();
-    }
+    this.#windowMessageHandler = this.#handleWindowMessage.bind(this);
+    this.#debouncedFindShadowRoot = debounce(
+      this.#findAndObserveShadowRoot.bind(this),
+      300
+    );
 
     // 鼠标悬停翻译
     if (this.#setting.mouseHoverSetting.useMouseHover) {
@@ -406,15 +416,41 @@ export class Translator {
         this.#startObserveRoot(root);
       });
 
-    // 查找现有的所有shadowroot
     if (this.#rule.hasShadowroot === "true") {
-      try {
-        this.#findAllShadowRoots().forEach((shadowRoot) => {
-          this.#startObserveShadowRoot(shadowRoot);
-        });
-      } catch (err) {
-        kissLog("findAllShadowRoots", err);
-      }
+      this.#attachShadowRootListener();
+      this.#findAndObserveShadowRoot();
+    }
+  }
+
+  #handleWindowMessage(event) {
+    if (event.data?.type === "KISS_SHADOW_ROOT_CREATED") {
+      this.#debouncedFindShadowRoot();
+    }
+  }
+
+  #attachShadowRootListener() {
+    if (!this.#isShadowRootJsInjected) {
+      const id = "kiss-translator-inject-shadowroot-js";
+      injectJs(INJECTOR.shadowroot, id);
+
+      this.#isShadowRootJsInjected = true;
+    }
+
+    window.addEventListener("message", this.#windowMessageHandler);
+  }
+
+  #removeShadowRootListener() {
+    window.removeEventListener("message", this.#windowMessageHandler);
+  }
+
+  // 查找现有的所有shadowroot
+  #findAndObserveShadowRoot() {
+    try {
+      this.#findAllShadowRoots().forEach((shadowRoot) => {
+        this.#startObserveShadowRoot(shadowRoot);
+      });
+    } catch (err) {
+      kissLog("findAllShadowRoots", err);
     }
   }
 
@@ -516,11 +552,13 @@ export class Translator {
 
   // 监控翻译单元的可见性
   #createIntersectionObserver() {
+    const { transInterval, rootMargin = 500 } = this.#setting;
+
     const pending = new Set();
     const flush = debounce(() => {
       pending.forEach((node) => this.#performSyncNode(node));
       pending.clear();
-    }, this.#setting.transInterval);
+    }, transInterval);
 
     return new IntersectionObserver(
       (entries) => {
@@ -534,7 +572,7 @@ export class Translator {
           }
         });
       },
-      { threshold: 0.01 }
+      { threshold: 0.01, rootMargin: `${rootMargin}px 0px ${rootMargin}px 0px` }
     );
   }
 
@@ -605,13 +643,6 @@ export class Translator {
         this.#processNode(foundNode);
       }
     }, 100);
-  }
-
-  // 创建shadowroot的回调
-  #createShadowRootMonitor() {
-    return new ShadowRootMonitor((shadowRoot) => {
-      this.#startObserveShadowRoot(shadowRoot);
-    });
   }
 
   // 跟踪鼠标下的可翻译节点
@@ -743,6 +774,9 @@ export class Translator {
 
   // 开始/重新监控节点
   #startObserveNode(node) {
+    // todo: DocumentFragment 无法被 this.#io.observe
+    if (!Translator.isElement(node)) return;
+
     if (this.#rule.highlightWords === OPT_HIGHLIGHT_WORDS_BEFORETRANS) {
       this.#highlightWordsDeeply(node);
     }
@@ -1116,7 +1150,6 @@ export class Translator {
     const {
       transTag,
       textStyle,
-      transStartHook,
       transEndHook,
       transOnly,
       termsStyle,
@@ -1134,20 +1167,6 @@ export class Translator {
     } = this.#setting;
     const parentNode = hostNode.parentElement;
     const hideOrigin = transOnly === "true";
-
-    // 翻译开始钩子函数
-    if (transStartHook?.trim()) {
-      try {
-        interpreter.run(`exports.transStartHook = ${transStartHook}`);
-        interpreter.exports.transStartHook({
-          hostNode,
-          parentNode,
-          nodes,
-        });
-      } catch (err) {
-        kissLog("transStartHook", err);
-      }
-    }
 
     try {
       const [processedString, placeholderMap] = this.#serializeForTranslation(
@@ -1173,10 +1192,8 @@ export class Translator {
       nodes[nodes.length - 1].after(wrapper);
 
       const currentRunId = this.#runId;
-      const [translatedText, isSameLang] = await this.#translateFetch(
-        processedString,
-        deLang
-      );
+      const { trText: translatedText, isSame: isSameLang } =
+        await this.#translateFetch(processedString, deLang);
       if (this.#runId !== currentRunId) {
         throw new Error("Request terminated");
       }
@@ -1298,7 +1315,7 @@ export class Translator {
           (this.#rule.hasRichText === "true" &&
             Translator.TAGS.REPLACE.has(node.tagName)) ||
           node.matches(this.#rule.keepSelector) ||
-          node.matches(this.#ignoreSelector) ||
+          // node.matches(this.#ignoreSelector) ||
           !node.textContent.trim()
         ) {
           if (node.tagName === "IMG" || node.tagName === "SVG") {
@@ -1362,16 +1379,39 @@ export class Translator {
 
   // 发起翻译请求
   #translateFetch(text, deLang = "") {
-    const { fromLang, toLang } = this.#rule;
+    const { toLang, transStartHook } = this.#rule;
+    const fromLang = deLang || this.#rule.fromLang;
+    const apiSetting = { ...this.#apiSetting };
+    const docInfo = { ...this.#docInfo };
+    const glossary = { ...this.#glossary };
+    const apisMap = this.#apisMap;
 
-    return apiTranslate({
+    const args = {
       text,
-      fromLang: deLang || fromLang,
+      fromLang,
       toLang,
-      apiSetting: this.#apiSetting,
-      docInfo: this.#docInfo,
-      glossary: this.#glossary,
-    });
+      apiSetting,
+      docInfo,
+      glossary,
+    };
+
+    // 翻译开始钩子函数
+    if (transStartHook?.trim()) {
+      try {
+        interpreter.run(`exports.transStartHook = ${transStartHook}`);
+        const hookResult = interpreter.exports.transStartHook({
+          ...args,
+          apisMap,
+        });
+        if (hookResult) {
+          Object.assign(args, ...hookResult);
+        }
+      } catch (err) {
+        kissLog("transStartHook", err);
+      }
+    }
+
+    return apiTranslate(args);
   }
 
   // 查找指定节点下所有译文节点
@@ -1520,6 +1560,8 @@ export class Translator {
 
   // 停止监听，重置参数
   #resetOptions() {
+    this.#removeShadowRootListener();
+
     this.#io.disconnect();
     this.#mo.disconnect();
     this.#viewNodes.clear();
@@ -1565,14 +1607,35 @@ export class Translator {
     this.#isJsInjected = true;
 
     try {
-      const { injectJs, injectCss } = this.#rule;
-      if (isExt) {
-        injectJs && sendBgMsg(MSG_INJECT_JS, injectJs);
-        injectCss && sendBgMsg(MSG_INJECT_CSS, injectCss);
-      } else {
-        injectJs &&
-          injectInlineJs(injectJs, "kiss-translator-userinit-injector");
-        injectCss && injectInternalCss(injectCss);
+      // const { injectJs, injectCss } = this.#rule;
+      // if (isExt) {
+      //   injectJs && sendBgMsg(MSG_INJECT_JS, injectJs);
+      //   injectCss && sendBgMsg(MSG_INJECT_CSS, injectCss);
+      // } else {
+      //   injectJs &&
+      //     injectInlineJs(injectJs, "kiss-translator-userinit-injector");
+      //   injectCss && injectInternalCss(injectCss);
+      // }
+
+      const { injectJs, toLang } = this.#rule;
+      if (injectJs?.trim()) {
+        const apiSetting = { ...this.#apiSetting };
+        const docInfo = { ...this.#docInfo };
+        const glossary = { ...this.#glossary };
+        const apisMap = this.#apisMap;
+        const apiDectect = tryDetectLang;
+        interpreter.import({
+          KT: {
+            apiTranslate,
+            apiDectect,
+            apiSetting,
+            apisMap,
+            toLang,
+            docInfo,
+            glossary,
+          },
+        });
+        interpreter.run(injectJs);
       }
     } catch (err) {
       kissLog("inject js", err);
@@ -1623,8 +1686,8 @@ export class Translator {
 
     try {
       const deLang = await tryDetectLang(title);
-      const [translatedTitle] = await this.#translateFetch(title, deLang);
-      document.title = translatedTitle || title;
+      const { trText } = await this.#translateFetch(title, deLang);
+      document.title = trText || title;
     } catch (err) {
       kissLog("tanslate title", err);
     }
@@ -1690,7 +1753,6 @@ export class Translator {
   stop() {
     this.disable();
     this.#resetOptions();
-    this.#srm.stop();
     this.#disableMouseHover();
     this.#removeInjector();
     this.#isInitialized = false;

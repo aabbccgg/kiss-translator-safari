@@ -4,11 +4,11 @@ import {
   OPT_LANGS_LIST,
   DEFAULT_API_SETTING,
 } from "../config";
-import { genEventName, removeEndchar, matchInputStr } from "./utils";
+import { genEventName, removeEndchar, matchInputStr, sleep } from "./utils";
 import { stepShortcutRegister } from "./shortcut";
 import { apiTranslate } from "../apis";
 import { createLoadingSVG } from "./svg";
-import { kissLog } from "./log";
+import { logger } from "./log";
 
 function isInputNode(node) {
   return node.nodeName === "INPUT" || node.nodeName === "TEXTAREA";
@@ -18,21 +18,94 @@ function isEditAbleNode(node) {
   return node.hasAttribute("contenteditable");
 }
 
-function replaceContentEditableText(node, newText) {
-  node.focus();
-  const selection = window.getSelection();
-  if (!selection) return;
+async function replaceContentEditableText(node, newText) {
+  try {
+    logger.debug("try replace editable 1: pasteEvent");
 
-  const range = document.createRange();
-  range.selectNodeContents(node);
-  selection.removeAllRanges();
-  selection.addRange(range);
+    node.focus();
 
-  range.deleteContents();
-  const textNode = document.createTextNode(newText);
-  range.insertNode(textNode);
+    const selection = window.getSelection();
+    if (!selection) throw new Error("window.getSelection() is not available.");
 
-  selection.collapseToEnd();
+    const targetNode = node.querySelector("p") || node;
+    const range = document.createRange();
+    range.selectNodeContents(targetNode);
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    const dataTransfer = new DataTransfer();
+    dataTransfer.setData("text/plain", newText);
+
+    const pasteEvent = new ClipboardEvent("paste", {
+      clipboardData: dataTransfer,
+      bubbles: true,
+      cancelable: true,
+    });
+    node.dispatchEvent(pasteEvent);
+
+    await sleep(50);
+    if (node.innerText.trim() === newText) {
+      return true;
+    }
+
+    throw new Error("Strategy 1 failed to replace text correctly.");
+  } catch (error) {
+    logger.debug("Strategy 1 Failed:", error.message);
+  }
+
+  try {
+    logger.debug("try replace editable 2: execCommand");
+
+    node.focus();
+
+    const selection = window.getSelection();
+    if (!selection) throw new Error("window.getSelection() is not available.");
+
+    const targetNode = node.querySelector("p") || node;
+    const range = document.createRange();
+    range.selectNodeContents(targetNode);
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    document.execCommand("insertText", false, newText);
+
+    await sleep(50);
+    if (node.innerText.trim() === newText) {
+      return true;
+    }
+
+    throw new Error("Strategy 2 failed to replace text correctly.");
+  } catch (error) {
+    logger.debug("Strategy 2 Failed:", error.message);
+  }
+
+  try {
+    logger.debug("try replace editable 3: textContent");
+
+    node.focus();
+
+    const targetNode = node.querySelector("p") || node;
+    const textSpan = targetNode.querySelector('span[data-lexical-text="true"]');
+
+    if (textSpan) {
+      textSpan.textContent = newText;
+    } else {
+      targetNode.textContent = newText;
+    }
+
+    node.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
+
+    await sleep(50);
+    if (node.innerText.trim() === newText) {
+      return true;
+    }
+
+    throw new Error("Strategy 3 failed to replace text correctly.");
+  } catch (error) {
+    logger.debug("Strategy 3 Failed:", error.message);
+  }
+
+  return false;
 }
 
 function getNodeText(node) {
@@ -107,7 +180,7 @@ export class InputTranslator {
     );
 
     this.#isEnabled = true;
-    kissLog("Input Translator enabled.");
+    logger.info("Input Translator enabled.");
   }
 
   /**
@@ -122,7 +195,7 @@ export class InputTranslator {
       this.#unregisterShortcut = null;
     }
     this.#isEnabled = false;
-    kissLog("Input Translator disabled.");
+    logger.info("Input Translator disabled.");
   }
 
   /**
@@ -193,25 +266,30 @@ export class InputTranslator {
     try {
       addLoading(node, loadingId);
 
-      const [trText, isSame] = await apiTranslate({
+      const { trText, isSame } = await apiTranslate({
         text,
         fromLang,
         toLang,
         apiSetting,
       });
 
-      if (!trText || isSame) return;
+      const newText = trText?.trim() || "";
+      if (!newText || isSame) return;
 
       if (isInputNode(node)) {
-        node.value = trText;
+        node.value = newText;
         node.dispatchEvent(
           new Event("input", { bubbles: true, cancelable: true })
         );
       } else {
-        replaceContentEditableText(node, trText);
+        const success = await replaceContentEditableText(node, newText);
+        if (!success) {
+          // todo: 提示可以黏贴
+          logger.info("Replace editable text failed");
+        }
       }
     } catch (err) {
-      kissLog("Translate input error:", err);
+      logger.info("Translate input error:", err);
     } finally {
       removeLoading(loadingId);
     }

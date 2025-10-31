@@ -27,7 +27,7 @@ import ReusableAutocomplete from "./ReusableAutocomplete";
 import ShowMoreButton from "./ShowMoreButton";
 import {
   OPT_TRANS_DEEPLX,
-  OPT_TRANS_OLLAMA,
+  // OPT_TRANS_OLLAMA,
   OPT_TRANS_CUSTOMIZE,
   OPT_TRANS_NIUTRANS,
   OPT_TRANS_BUILTINAI,
@@ -38,12 +38,14 @@ import {
   DEFAULT_BATCH_SIZE,
   DEFAULT_BATCH_LENGTH,
   DEFAULT_CONTEXT_SIZE,
-  OPT_ALL_TYPES,
+  OPT_ALL_TRANS_TYPES,
   API_SPE_TYPES,
   BUILTIN_STONES,
   BUILTIN_PLACEHOLDERS,
   BUILTIN_PLACETAGS,
   OPT_TRANS_AZUREAI,
+  defaultNobatchPrompt,
+  defaultNobatchUserPrompt,
 } from "../../config";
 import ValidationInput from "../../hooks/ValidationInput";
 
@@ -54,18 +56,25 @@ function TestButton({ api }) {
   const handleApiTest = async () => {
     try {
       setLoading(true);
-      const [text] = await apiTranslate({
-        text: "hello world",
+      const text = "hello world";
+      const { trText } = await apiTranslate({
+        text,
         fromLang: "en",
         toLang: "zh-CN",
         apiSetting: { ...api },
         useCache: false,
         usePool: false,
       });
-      if (!text) {
+      if (!trText) {
         throw new Error("empty result");
       }
-      alert.success(i18n("test_success"));
+      alert.success(
+        <>
+          <div>{i18n("test_success")}</div>
+          <div>{text}</div>
+          <div>{trText}</div>
+        </>
+      );
     } catch (err) {
       // alert.error(`${i18n("test_failed")}: ${err.message}`);
       let msg = err.message;
@@ -77,24 +86,7 @@ function TestButton({ api }) {
       alert.error(
         <>
           <div>{i18n("test_failed")}</div>
-          {msg === err.message ? (
-            <div
-              style={{
-                maxWidth: 400,
-              }}
-            >
-              {msg}
-            </div>
-          ) : (
-            <pre
-              style={{
-                maxWidth: 400,
-                overflow: "auto",
-              }}
-            >
-              {msg}
-            </pre>
-          )}
+          {msg === err.message ? <div>{msg}</div> : <pre>{msg}</pre>}
         </>
       );
     } finally {
@@ -181,12 +173,14 @@ function ApiFields({ apiSlug, isUserApi, deleteApi }) {
     model = "",
     apiType,
     systemPrompt = "",
+    nobatchPrompt = defaultNobatchPrompt,
+    nobatchUserPrompt = defaultNobatchUserPrompt,
     subtitlePrompt = "",
     // userPrompt = "",
     customHeader = "",
     customBody = "",
-    think = false,
-    thinkIgnore = "",
+    // think = false,
+    // thinkIgnore = "",
     fetchLimit = DEFAULT_FETCH_LIMIT,
     fetchInterval = DEFAULT_FETCH_INTERVAL,
     httpTimeout = DEFAULT_HTTP_TIMEOUT,
@@ -195,7 +189,7 @@ function ApiFields({ apiSlug, isUserApi, deleteApi }) {
     reqHook = "",
     resHook = "",
     temperature = 0,
-    maxTokens = 256,
+    maxTokens = 20480,
     apiName = "",
     isDisabled = false,
     useBatchFetch = false,
@@ -309,29 +303,53 @@ function ApiFields({ apiSlug, isUserApi, deleteApi }) {
                 <ValidationInput
                   size="small"
                   fullWidth
-                  label={"Max Tokens"}
+                  label={"Max Tokens (0-1000000)"}
                   type="number"
                   name="maxTokens"
                   value={maxTokens}
                   onChange={handleChange}
                   min={0}
-                  max={2 ** 15}
+                  max={1000000}
                 />
               </Grid>
               <Grid item xs={12} sm={12} md={6} lg={3}></Grid>
             </Grid>
           </Box>
 
-          <TextField
-            size="small"
-            label={"SYSTEM PROMPT"}
-            name="systemPrompt"
-            value={systemPrompt}
-            onChange={handleChange}
-            multiline
-            maxRows={10}
-            helperText={i18n("system_prompt_helper")}
-          />
+          {useBatchFetch ? (
+            <TextField
+              size="small"
+              label={"BATCH SYSTEM PROMPT"}
+              name="systemPrompt"
+              value={systemPrompt}
+              onChange={handleChange}
+              multiline
+              maxRows={10}
+              helperText={i18n("system_prompt_helper")}
+            />
+          ) : (
+            <>
+              <TextField
+                size="small"
+                label={"SYSTEM PROMPT"}
+                name="nobatchPrompt"
+                value={nobatchPrompt}
+                onChange={handleChange}
+                multiline
+                maxRows={10}
+              />
+              <TextField
+                size="small"
+                label={"USER PROMPT"}
+                name="nobatchUserPrompt"
+                value={nobatchUserPrompt}
+                onChange={handleChange}
+                multiline
+                maxRows={10}
+              />
+            </>
+          )}
+
           <TextField
             size="small"
             label={"SUBTITLE PROMPT"}
@@ -354,7 +372,7 @@ function ApiFields({ apiSlug, isUserApi, deleteApi }) {
         </>
       )}
 
-      {apiType === OPT_TRANS_OLLAMA && (
+      {/* {apiType === OPT_TRANS_OLLAMA && (
         <>
           <TextField
             select
@@ -375,7 +393,7 @@ function ApiFields({ apiSlug, isUserApi, deleteApi }) {
             onChange={handleChange}
           />
         </>
-      )}
+      )} */}
 
       {apiType === OPT_TRANS_NIUTRANS && (
         <>
@@ -775,7 +793,7 @@ export default function Apis() {
 
   const apiTypes = useMemo(
     () =>
-      OPT_ALL_TYPES.map((type) => ({
+      OPT_ALL_TRANS_TYPES.map((type) => ({
         type,
         label: type,
       })),

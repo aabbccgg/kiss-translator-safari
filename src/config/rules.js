@@ -117,7 +117,7 @@ export const DEFAULT_RULE = {
   parentStyle: "", // 选择器父节点样式
   grandStyle: "", // 选择器父节点样式
   injectJs: "", // 注入JS
-  injectCss: "", // 注入CSS
+  // injectCss: "", // 注入CSS (作废)
   transOnly: GLOBAL_KEY, // 是否仅显示译文
   // transTiming: GLOBAL_KEY, // 翻译时机/鼠标悬停翻译  (暂时作废)
   transTag: GLOBAL_KEY, // 译文元素标签
@@ -160,7 +160,7 @@ export const GLOBLA_RULE = {
   parentStyle: DEFAULT_SELECT_STYLE, // 选择器父节点样式
   grandStyle: DEFAULT_SELECT_STYLE, // 选择器祖节点样式
   injectJs: "", // 注入JS
-  injectCss: "", // 注入CSS
+  // injectCss: "", // 注入CSS（作废）
   transOnly: "false", // 是否仅显示译文
   // transTiming: OPT_TIMING_PAGESCROLL, // 翻译时机/鼠标悬停翻译 (暂时作废)
   transTag: DEFAULT_TRANS_TAG, // 译文元素标签
@@ -223,6 +223,11 @@ const RULES_MAP = {
   "www.youtube.com": {
     rootsSelector: `ytd-page-manager`,
     ignoreSelector: `aside, button, footer, form, header, pre, mark, nav, #player, #container, .caption-window, .ytp-settings-menu`,
+  },
+  "web.telegram.org": {
+    autoScan: `false`,
+    selector: ".text-content, .embedded-text-wrapper",
+    rootsSelector: ".Transition",
   },
 };
 

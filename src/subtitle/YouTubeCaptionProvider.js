@@ -1,5 +1,5 @@
 import { logger } from "../libs/log.js";
-import { apiSubtitle, apiTranslate } from "../apis/index.js";
+import { apiSubtitle } from "../apis/index.js";
 import { BilingualSubtitleManager } from "./BilingualSubtitleManager.js";
 import {
   MSG_XHR_DATA_YOUTUBE,
@@ -70,6 +70,8 @@ class YouTubeCaptionProvider {
   }
 
   #moAds(adContainer) {
+    const { skipAd = false } = this.#setting;
+
     const adLayoutSelector = ".ytp-ad-player-overlay-layout";
     const skipBtnSelector =
       ".ytp-skip-ad-button, .ytp-ad-skip-button, .ytp-ad-skip-button-modern";
@@ -83,22 +85,24 @@ class YouTubeCaptionProvider {
             if (node.matches(adLayoutSelector)) {
               logger.debug("Youtube Provider: AD start playing!", node);
               // todo: 顺带把广告快速跳过
-              if (videoEl) {
+              if (videoEl && skipAd) {
                 videoEl.playbackRate = 16;
                 videoEl.currentTime = videoEl.duration;
               }
               if (this.#managerInstance) {
                 this.#managerInstance.setIsAdPlaying(true);
               }
-            } else if (node.matches(skipBtnSelector)) {
+            } else if (node.matches(skipBtnSelector) && skipAd) {
               logger.debug("Youtube Provider: AD skip button!", node);
               node.click();
             }
 
-            const skipBtn = node?.querySelector(skipBtnSelector);
-            if (skipBtn) {
-              logger.debug("Youtube Provider: AD skip button!!", skipBtn);
-              skipBtn.click();
+            if (skipAd) {
+              const skipBtn = node?.querySelector(skipBtnSelector);
+              if (skipBtn) {
+                logger.debug("Youtube Provider: AD skip button!!", skipBtn);
+                skipBtn.click();
+              }
             }
           });
           mutation.removedNodes.forEach((node) => {
@@ -106,7 +110,7 @@ class YouTubeCaptionProvider {
 
             if (node.matches(adLayoutSelector)) {
               logger.debug("Youtube Provider: Ad ends!");
-              if (videoEl) {
+              if (videoEl && skipAd) {
                 videoEl.playbackRate = 1;
               }
               if (this.#managerInstance) {
@@ -161,14 +165,13 @@ class YouTubeCaptionProvider {
     this.#ytControls = ytControls;
 
     const kissControls = document.createElement("div");
-    kissControls.className = "kiss-bilingual-subtitle-controls";
+    kissControls.className = "notranslate kiss-subtitle-controls";
     Object.assign(kissControls.style, {
       height: "100%",
     });
 
     const toggleButton = document.createElement("button");
-    toggleButton.className =
-      "ytp-button notranslate kiss-bilingual-subtitle-button";
+    toggleButton.className = "ytp-button kiss-subtitle-button";
     toggleButton.title = APP_NAME;
     Object.assign(toggleButton.style, {
       color: "white",
@@ -505,7 +508,6 @@ class YouTubeCaptionProvider {
     this.#managerInstance = new BilingualSubtitleManager({
       videoEl,
       formattedSubtitles: this.#subtitles,
-      translationService: apiTranslate,
       setting: { ...this.#setting, fromLang: this.#fromLang },
     });
     this.#managerInstance.start();

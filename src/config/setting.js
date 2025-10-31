@@ -114,6 +114,7 @@ export const DEFAULT_SUBTITLE_SETTING = {
   // fromLang: "en",
   toLang: "zh-CN",
   isBilingual: true, // 是否双语显示
+  skipAd: false, // 是否快进广告
   windowStyle: SUBTITLE_WINDOW_STYLE, // 背景样式
   originStyle: SUBTITLE_ORIGIN_STYLE, // 原文样式
   translationStyle: SUBTITLE_TRANSLATION_STYLE, // 译文样式
@@ -181,4 +182,5 @@ export const DEFAULT_SETTING = {
   transAllnow: false, // 是否立即全部翻译
   subtitleSetting: DEFAULT_SUBTITLE_SETTING, // 字幕设置
   logLevel: LogLevel.INFO.value, // 日志级别
+  rootMargin: 500, // 提前触发翻译
 };
