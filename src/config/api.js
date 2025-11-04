@@ -170,6 +170,7 @@ export const OPT_LANGS_TO = [
   ["cs", "Czech - Čeština"],
   ["da", "Danish - Dansk"],
   ["nl", "Dutch - Nederlands"],
+  ["fa", "Persian - فارسی"],
   ["fi", "Finnish - Suomi"],
   ["fr", "French - Français"],
   ["de", "German - Deutsch"],
@@ -446,7 +447,7 @@ const defaultApi = {
   resHook: "", // response 钩子函数
   fetchLimit: DEFAULT_FETCH_LIMIT, // 最大请求数量
   fetchInterval: DEFAULT_FETCH_INTERVAL, // 请求间隔时间
-  httpTimeout: DEFAULT_HTTP_TIMEOUT * 30, // 请求超时时间
+  httpTimeout: DEFAULT_HTTP_TIMEOUT * 3, // 请求超时时间
   batchInterval: DEFAULT_BATCH_INTERVAL, // 批处理请求间隔时间
   batchSize: DEFAULT_BATCH_SIZE, // 每次最多发送段落数量
   batchLength: DEFAULT_BATCH_LENGTH, // 每次发送最大文字数量

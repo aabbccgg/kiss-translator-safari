@@ -526,9 +526,9 @@ export const I18N = {
     zh_TW: `1.其中 BuiltinAI 為瀏覽器內建AI翻譯，目前僅 Chrome 138 以上版本支援。`,
   },
   about_api_2: {
-    zh: `2、大部分AI接口都与OpenAI兼容，因此选择添加OpenAI类型即可。`,
+    zh: `2、大部分AI接口都与OpenAI兼容，因此选择添加OpenAI类型即可。It should be noted that Prompt has two types: batch translation and nobatch translation. Not all interfaces support batch translation.`,
     en: `2. Most AI interfaces are compatible with OpenAI, so just choose to add the OpenAI type.`,
-    zh_TW: `2.大部分AI介面都與OpenAI相容，因此選擇新增OpenAI類型即可。`,
+    zh_TW: `2.大部分AI介面都與OpenAI相容，因此選擇新增OpenAI類型即可。要注意的是Prompt分聚合翻譯和非聚合翻譯兩種，不是所有介面都支援聚合翻譯。`,
   },
   about_api_3: {
     zh: `3、暂未列出的接口，理论上都可以通过自定义接口 (Custom) 的形式支持。`,
@@ -569,10 +569,35 @@ export const I18N = {
     zh: `虚线框`,
     en: `Dashed Box`,
   },
+  dash_line_bold: {
+    zh: `下划虚线加粗`,
+    en: `Dashed Underline Bold`,
+    zh_TW: `下劃虛線`,
+  },
+  dash_box_bold: {
+    zh: `虚线框加粗`,
+    en: `Dashed Box Bold`,
+    zh_TW: `虛線框加粗`,
+  },
+  marker: {
+    zh: `马克笔`,
+    en: `Marker`,
+    zh_TW: `馬克筆`,
+  },
+  gradient_marker: {
+    zh: `渐变马克笔`,
+    en: `Gradient Marker`,
+    zh_TW: `漸層馬克筆`,
+  },
   wavy_line: {
     zh: `下划波浪线`,
     en: `Wavy Underline`,
     zh_TW: `下劃波浪線`,
+  },
+  wavy_line_bold: {
+    zh: `下划波浪线加粗`,
+    en: `Wavy Underline Bold`,
+    zh_TW: `下劃波浪線加粗`,
   },
   fuzzy: {
     zh: `模糊`,
@@ -604,15 +629,10 @@ export const I18N = {
     en: `Glow`,
     zh_TW: `發光`,
   },
-  diy_style: {
-    zh: `自定义样式`,
-    en: `Custom Style`,
-    zh_TW: `自訂樣式`,
-  },
-  diy_style_helper: {
-    zh: `遵循“CSS”的语法`,
-    en: `Follow the syntax of "CSS"`,
-    zh_TW: `遵循 CSS 語法`,
+  colorful: {
+    zh: `多彩`,
+    en: `Colorful`,
+    zh_TW: `多彩`,
   },
   setting: {
     zh: `设置`,
@@ -708,6 +728,11 @@ export const I18N = {
     zh: `1、AI智能替换，不支持正则表达式。2、多条术语用换行或分号“;”隔开。3、术语和译文用英文逗号“,”隔开。4、没有译文视为不翻译术语。`,
     en: `1. AI intelligent replacement does not support regular expressions.2. Separate multiple terms with newlines or semicolons ";". 3. Terms and translations are separated by English commas ",". 4. If there is no translation, the term will be deemed not to be translated.`,
     zh_TW: `1.AI智能替換，不支援正規表示式。2. 多條術語以換行或分號「;」分隔。3. 術語與譯文以英文逗號「,」分隔。4. 無譯文者視為不翻譯該術語。`,
+  },
+  text_ext_style: {
+    zh: `译文附加样式`,
+    en: `Translation additional styles`,
+    zh_TW: `譯文附加樣式`,
   },
   selector_style: {
     zh: `选择器节点样式`,
@@ -1130,7 +1155,7 @@ export const I18N = {
   },
   selection_translate: {
     zh: `划词翻译`,
-    en: `Selection Translate`,
+    en: `Selection Translation`,
     zh_TW: `劃詞翻譯`,
   },
   toggle_selection_translate: {
@@ -1635,7 +1660,7 @@ export const I18N = {
   },
   subtitle_translate: {
     zh: `字幕翻译`,
-    en: `Subtitle translate`,
+    en: `Subtitle translation`,
     zh_TW: `字幕翻譯`,
   },
   toggle_subtitle_translate: {
@@ -1788,6 +1813,21 @@ export const I18N = {
     zh: `滚动加载提前触发 (0-10000px)`,
     en: `Early triggering of scroll loading (0-10000px)`,
     zh_TW: `滾動載入提前觸發 (0-10000px)`,
+  },
+  styles_setting: {
+    zh: `样式设置`,
+    en: `Style Setting`,
+    zh_TW: `樣式設定`,
+  },
+  style_name: {
+    zh: `样式名称`,
+    en: `Style Name`,
+    zh_TW: `樣式名稱`,
+  },
+  style_code: {
+    zh: `样式代码`,
+    en: `Style Code`,
+    zh_TW: `樣式程式碼`,
   },
 };
 

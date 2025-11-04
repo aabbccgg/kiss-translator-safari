@@ -6,6 +6,7 @@ import {
   OPT_TRANS_MICROSOFT,
   DEFAULT_API_LIST,
 } from "./api";
+import { DEFAULT_CUSTOM_STYLES } from "./styles";
 
 // 默认快捷键
 export const OPT_SHORTCUT_TRANSLATE = "toggleTranslate";
@@ -102,9 +103,9 @@ line-height: 1.3;
 text-shadow: 1px 1px 2px black;
 display: inline-block`;
 
-const SUBTITLE_ORIGIN_STYLE = `font-size: clamp(1.5rem, 3cqw, 3rem);`;
+const SUBTITLE_ORIGIN_STYLE = `font-size: clamp(1rem, 2cqw, 3rem);`;
 
-const SUBTITLE_TRANSLATION_STYLE = `font-size: clamp(1.5rem, 3cqw, 3rem);`;
+const SUBTITLE_TRANSLATION_STYLE = `font-size: clamp(1rem, 2cqw, 3rem);`;
 
 export const DEFAULT_SUBTITLE_SETTING = {
   enabled: true, // 是否开启
@@ -183,4 +184,5 @@ export const DEFAULT_SETTING = {
   subtitleSetting: DEFAULT_SUBTITLE_SETTING, // 字幕设置
   logLevel: LogLevel.INFO.value, // 日志级别
   rootMargin: 500, // 提前触发翻译
+  customStyles: DEFAULT_CUSTOM_STYLES, // 自定义样式列表
 };

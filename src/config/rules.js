@@ -1,4 +1,5 @@
 import { OPT_TRANS_MICROSOFT } from "./api";
+import { OPT_STYLE_NONE } from "./styles";
 
 export const GLOBAL_KEY = "*";
 export const REMAIN_KEY = "-";
@@ -9,44 +10,6 @@ export const DEFAULT_COLOR = "#209CEE"; // 默认高亮背景色/线条颜色
 export const DEFAULT_TRANS_TAG = "font";
 export const DEFAULT_SELECT_STYLE =
   "-webkit-line-clamp: unset; max-height: none; height: auto;";
-
-export const OPT_STYLE_NONE = "style_none"; // 无
-export const OPT_STYLE_LINE = "under_line"; // 下划线
-export const OPT_STYLE_DOTLINE = "dot_line"; // 点状线
-export const OPT_STYLE_DASHLINE = "dash_line"; // 虚线
-export const OPT_STYLE_DASHBOX = "dash_box"; // 虚线框
-export const OPT_STYLE_WAVYLINE = "wavy_line"; // 波浪线
-export const OPT_STYLE_FUZZY = "fuzzy"; // 模糊
-export const OPT_STYLE_HIGHLIGHT = "highlight"; // 高亮
-export const OPT_STYLE_BLOCKQUOTE = "blockquote"; // 引用
-export const OPT_STYLE_GRADIENT = "gradient"; // 渐变
-export const OPT_STYLE_BLINK = "blink"; // 闪现
-export const OPT_STYLE_GLOW = "glow"; // 发光
-export const OPT_STYLE_DIY = "diy_style"; // 自定义样式
-export const OPT_STYLE_ALL = [
-  OPT_STYLE_NONE,
-  OPT_STYLE_LINE,
-  OPT_STYLE_DOTLINE,
-  OPT_STYLE_DASHLINE,
-  OPT_STYLE_WAVYLINE,
-  OPT_STYLE_DASHBOX,
-  OPT_STYLE_FUZZY,
-  OPT_STYLE_HIGHLIGHT,
-  OPT_STYLE_BLOCKQUOTE,
-  OPT_STYLE_GRADIENT,
-  OPT_STYLE_BLINK,
-  OPT_STYLE_GLOW,
-  OPT_STYLE_DIY,
-];
-export const OPT_STYLE_USE_COLOR = [
-  OPT_STYLE_LINE,
-  OPT_STYLE_DOTLINE,
-  OPT_STYLE_DASHLINE,
-  OPT_STYLE_DASHBOX,
-  OPT_STYLE_WAVYLINE,
-  OPT_STYLE_HIGHLIGHT,
-  OPT_STYLE_BLOCKQUOTE,
-];
 
 export const OPT_TIMING_PAGESCROLL = "mk_pagescroll"; // 滚动加载翻译
 export const OPT_TIMING_PAGEOPEN = "mk_pageopen"; // 直接翻译到底
@@ -81,19 +44,6 @@ export const OPT_HIGHLIGHT_WORDS_ALL = [
   OPT_HIGHLIGHT_WORDS_AFTERTRANS,
 ];
 
-export const DEFAULT_DIY_STYLE = `color: #333;
-background: linear-gradient(
-  45deg,
-  LightGreen 20%,
-  LightPink 20% 40%,
-  LightSalmon 40% 60%,
-  LightSeaGreen 60% 80%,
-  LightSkyBlue 80%
-);
-&:hover {
-  color: #111;
-};`;
-
 export const DEFAULT_SELECTOR =
   "h1, h2, h3, h4, h5, h6, li, p, dd, blockquote, figcaption, label, legend";
 export const DEFAULT_IGNORE_SELECTOR = "button, footer, pre, mark, nav";
@@ -109,8 +59,9 @@ export const DEFAULT_RULE = {
   toLang: GLOBAL_KEY, // 目标语言
   textStyle: GLOBAL_KEY, // 译文样式
   transOpen: GLOBAL_KEY, // 开启翻译
-  bgColor: "", // 译文颜色
-  textDiyStyle: "", // 自定义译文样式
+  // bgColor: "", // 译文颜色 (作废)
+  // textDiyStyle: "", // 自定义译文样式 (作废)
+  textExtStyle: "", // 译文附加样式
   termsStyle: "", // 专业术语样式
   highlightStyle: "", // 高亮词汇样式
   selectStyle: "", // 选择器节点样式
@@ -152,8 +103,9 @@ export const GLOBLA_RULE = {
   toLang: "zh-CN", // 目标语言
   textStyle: OPT_STYLE_NONE, // 译文样式
   transOpen: "false", // 开启翻译
-  bgColor: "", // 译文颜色
-  textDiyStyle: DEFAULT_DIY_STYLE, // 自定义译文样式
+  // bgColor: DEFAULT_COLOR, // 译文颜色 (作废)
+  // textDiyStyle: DEFAULT_DIY_STYLE, // 自定义译文样式 (作废)
+  textExtStyle: "", // 译文附加样式
   termsStyle: "font-weight: bold;", // 专业术语样式
   highlightStyle: "color: red;", // 高亮词汇样式
   selectStyle: DEFAULT_SELECT_STYLE, // 选择器节点样式
@@ -185,16 +137,6 @@ export const GLOBLA_RULE = {
 
 export const DEFAULT_RULES = [GLOBLA_RULE];
 
-export const DEFAULT_OW_RULE = {
-  apiSlug: REMAIN_KEY,
-  fromLang: REMAIN_KEY,
-  toLang: REMAIN_KEY,
-  textStyle: REMAIN_KEY,
-  transOpen: REMAIN_KEY,
-  bgColor: "",
-  textDiyStyle: DEFAULT_DIY_STYLE,
-};
-
 // todo: 校验几个内置规则
 const RULES_MAP = {
   // "www.google.com/search": {
@@ -210,7 +152,7 @@ const RULES_MAP = {
     autoScan: `false`,
   },
   "twitter.com, https://x.com": {
-    selector: `[data-testid='tweetText']`,
+    selector: `[data-testid='tweetText'], [data-testid='twitter-article-title'], .public-DraftStyleDefault-block`,
     keepSelector: `img, svg, a, span:has(a), div:has(a)`,
     ignoreSelector: `button, [data-testid='videoPlayer'], [role='group']`,
     autoScan: `false`,

@@ -1,10 +1,8 @@
 import { matchValue, type, isMatch } from "./utils";
 import {
   GLOBAL_KEY,
-  OPT_STYLE_ALL,
   OPT_LANGS_FROM,
   OPT_LANGS_TO,
-  // OPT_TIMING_ALL,
   DEFAULT_RULE,
   GLOBLA_RULE,
   OPT_SPLIT_PARAGRAPH_ALL,
@@ -13,7 +11,6 @@ import {
 import { loadOrFetchSubRules } from "./subRules";
 import { getRulesWithDefault, setRules } from "./storage";
 import { trySyncRules } from "./sync";
-// import { FIXER_ALL } from "./webfix";
 import { kissLog } from "./log";
 
 /**
@@ -56,12 +53,12 @@ export const matchRule = async (href, { injectRules, subrulesList }) => {
     "aiTerms",
     "termsStyle",
     "highlightStyle",
+    "textExtStyle",
     "selectStyle",
     "parentStyle",
     "grandStyle",
     "injectJs",
     // "injectCss",
-    // "fixerSelector",
     "transStartHook",
     "transEndHook",
     // "transRemoveHook",
@@ -77,16 +74,14 @@ export const matchRule = async (href, { injectRules, subrulesList }) => {
     "toLang",
     "transOpen",
     "transOnly",
-    // "transTiming",
     "autoScan",
     "hasRichText",
     "hasShadowroot",
     "transTag",
     "transTitle",
-    // "detectRemote",
-    // "fixerFunc",
     "splitParagraph",
     "highlightWords",
+    "textStyle",
   ].forEach((key) => {
     if (!rule[key] || rule[key] === GLOBAL_KEY) {
       rule[key] = globalRule[key];
@@ -98,18 +93,6 @@ export const matchRule = async (href, { injectRules, subrulesList }) => {
       rule[key] = globalRule[key];
     }
   });
-
-  // if (!rule.skipLangs || rule.skipLangs.length === 0) {
-  //   rule.skipLangs = globalRule.skipLangs;
-  // }
-  if (!rule.textStyle || rule.textStyle === GLOBAL_KEY) {
-    rule.textStyle = globalRule.textStyle;
-    rule.bgColor = globalRule.bgColor;
-    rule.textDiyStyle = globalRule.textDiyStyle;
-  } else {
-    rule.bgColor = rule.bgColor?.trim() || globalRule.bgColor;
-    rule.textDiyStyle = rule.textDiyStyle?.trim() || globalRule.textDiyStyle;
-  }
 
   return rule;
 };
@@ -150,6 +133,7 @@ export const checkRules = (rules) => {
         aiTerms,
         termsStyle,
         highlightStyle,
+        textExtStyle,
         selectStyle,
         parentStyle,
         grandStyle,
@@ -160,19 +144,12 @@ export const checkRules = (rules) => {
         toLang,
         textStyle,
         transOpen,
-        bgColor,
-        textDiyStyle,
         transOnly,
         autoScan,
         hasRichText,
         hasShadowroot,
-        // transTiming,
         transTag,
         transTitle,
-        // detectRemote,
-        // skipLangs,
-        // fixerSelector,
-        // fixerFunc,
         transStartHook,
         transEndHook,
         // transRemoveHook,
@@ -189,36 +166,34 @@ export const checkRules = (rules) => {
         aiTerms: type(aiTerms) === "string" ? aiTerms : "",
         termsStyle: type(termsStyle) === "string" ? termsStyle : "",
         highlightStyle: type(highlightStyle) === "string" ? highlightStyle : "",
+        textExtStyle: type(textExtStyle) === "string" ? textExtStyle : "",
         selectStyle: type(selectStyle) === "string" ? selectStyle : "",
         parentStyle: type(parentStyle) === "string" ? parentStyle : "",
         grandStyle: type(grandStyle) === "string" ? grandStyle : "",
         injectJs: type(injectJs) === "string" ? injectJs : "",
         // injectCss: type(injectCss) === "string" ? injectCss : "",
-        bgColor: type(bgColor) === "string" ? bgColor : "",
-        textDiyStyle: type(textDiyStyle) === "string" ? textDiyStyle : "",
         apiSlug:
           type(apiSlug) === "string" && apiSlug.trim() !== ""
             ? apiSlug.trim()
             : GLOBAL_KEY,
         fromLang: matchValue([GLOBAL_KEY, ...fromLangs], fromLang),
         toLang: matchValue([GLOBAL_KEY, ...toLangs], toLang),
-        textStyle: matchValue([GLOBAL_KEY, ...OPT_STYLE_ALL], textStyle),
+        // textStyle: matchValue([GLOBAL_KEY, ...OPT_STYLE_ALL], textStyle),
+        textStyle:
+          type(textStyle) === "string" && textStyle.trim() !== ""
+            ? textStyle.trim()
+            : GLOBAL_KEY,
         transOpen: matchValue([GLOBAL_KEY, "true", "false"], transOpen),
         transOnly: matchValue([GLOBAL_KEY, "true", "false"], transOnly),
         autoScan: matchValue([GLOBAL_KEY, "true", "false"], autoScan),
         hasRichText: matchValue([GLOBAL_KEY, "true", "false"], hasRichText),
         hasShadowroot: matchValue([GLOBAL_KEY, "true", "false"], hasShadowroot),
-        // transTiming: matchValue([GLOBAL_KEY, ...OPT_TIMING_ALL], transTiming),
         transTag: matchValue([GLOBAL_KEY, "span", "font"], transTag),
         transTitle: matchValue([GLOBAL_KEY, "true", "false"], transTitle),
-        // detectRemote: matchValue([GLOBAL_KEY, "true", "false"], detectRemote),
-        // skipLangs: type(skipLangs) === "array" ? skipLangs : [],
-        // fixerSelector: type(fixerSelector) === "string" ? fixerSelector : "",
         transStartHook: type(transStartHook) === "string" ? transStartHook : "",
         transEndHook: type(transEndHook) === "string" ? transEndHook : "",
         // transRemoveHook:
         //   type(transRemoveHook) === "string" ? transRemoveHook : "",
-        // fixerFunc: matchValue([GLOBAL_KEY, ...FIXER_ALL], fixerFunc),
         splitParagraph: matchValue(
           [GLOBAL_KEY, ...OPT_SPLIT_PARAGRAPH_ALL],
           splitParagraph
