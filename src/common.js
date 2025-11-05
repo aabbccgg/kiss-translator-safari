@@ -118,6 +118,13 @@ async function getFavWords(rule) {
  */
 export async function run(isUserscript = false) {
   try {
+    // if (document?.documentElement?.tagName?.toUpperCase() !== "HTML") {
+    //   return;
+    // }
+    if (!document?.contentType?.includes("html")) {
+      return;
+    }
+
     // 读取设置信息
     const setting = await getSettingWithDefault();
 
