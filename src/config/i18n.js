@@ -804,9 +804,9 @@ export const I18N = {
     zh_TW: `注入 CSS`,
   },
   inject_css_helper: {
-    zh: `初始化时注入运行，一个页面仅运行一次。`,
-    en: `Injected and run at initialization, and only run once per page.`,
-    zh_TW: `初始化時注入運行，一個頁面僅運行一次。`,
+    zh: `预加载时注入，一个页面仅运行一次。`,
+    en: `Injected during preload, runs only once per page.`,
+    zh_TW: `預先載入時注入，一個頁面僅運行一次。`,
   },
   fixer_function: {
     zh: `修复函数`,
@@ -1674,9 +1674,14 @@ export const I18N = {
     zh_TW: `雙語顯示`,
   },
   is_skip_ad: {
-    zh: `是否快进广告`,
-    en: `Should I fast forward to the ad?`,
-    zh_TW: `是否快轉廣告`,
+    zh: `快进广告`,
+    en: `Skip AD`,
+    zh_TW: `快轉廣告`,
+  },
+  download_subtitles: {
+    zh: `下载字幕`,
+    en: `Download subtitles`,
+    zh_TW: `下载字幕`,
   },
   background_styles: {
     zh: `背景样式`,
@@ -1753,6 +1758,36 @@ export const I18N = {
     en: `The subtitle data is ready, please click the KT button to load it`,
     zh_TW: `字幕資料已準備就緒，請點擊KT按鈕加載`,
   },
+  starting_reprocess_events: {
+    zh: `重新处理字幕数据...`,
+    en: `Reprocess the subtitle data...`,
+    zh_TW: `重新处理字幕数据...`,
+  },
+  waitting_for_subtitle: {
+    zh: `请等待字幕数据`,
+    en: `Please wait for the subtitle data.`,
+    zh_TW: `请等待字幕数据`,
+  },
+  ai_processing_pls_wait: {
+    zh: `AI处理中，请稍等...`,
+    en: `AI processing in progress, please wait...`,
+    zh_TW: `AI处理中，请稍等...`,
+  },
+  processing_subtitles: {
+    zh: `字幕处理中...`,
+    en: `Subtitle processing...`,
+    zh_TW: `字幕处理中...`,
+  },
+  waiting_subtitles: {
+    zh: `等待字幕中`,
+    en: `Waiting for subtitles`,
+    zh_TW: `等待字幕中`,
+  },
+  subtitle_is_not_yet_ready: {
+    zh: `字幕数据尚未准备好`,
+    en: `Subtitle is not yet ready.`,
+    zh_TW: `字幕数据尚未准备好`,
+  },
   log_level: {
     zh: `日志级别`,
     en: `Log Level`,
@@ -1828,6 +1863,16 @@ export const I18N = {
     zh: `样式代码`,
     en: `Style Code`,
     zh_TW: `樣式程式碼`,
+  },
+  pre_trans_seconds: {
+    zh: `提前翻译时长 (10-36000s)`,
+    en: `Pre translation seconds (10-36000s)`,
+    zh_TW: `提前翻译时长 (10-36000s)`,
+  },
+  throttle_trans_interval: {
+    zh: `节流翻译间隔 (1-3600s)`,
+    en: `Throttling translation interval (1-3600s)`,
+    zh_TW: `节流翻译间隔 (1-3600s)`,
   },
 };
 

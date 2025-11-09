@@ -13,6 +13,7 @@ import {
   OPT_SPLIT_PARAGRAPH_PUNCTUATION,
   OPT_SPLIT_PARAGRAPH_DISABLE,
   OPT_SPLIT_PARAGRAPH_TEXTLENGTH,
+  MSG_INJECT_CSS,
 } from "../config";
 import { interpreter } from "./interpreter";
 import { clearFetchPool } from "./pool";
@@ -26,6 +27,9 @@ import { shortcutRegister } from "./shortcut";
 import { tryDetectLang } from "./detect";
 import { trustedTypesHelper } from "./trustedTypes";
 import { injectJs, INJECTOR } from "../injectors";
+import { injectInternalCss } from "./injector";
+import { isExt } from "./client";
+import { sendBgMsg } from "./msg";
 
 /**
  * @class Translator
@@ -357,7 +361,7 @@ export class Translator {
 
     this.#eventName = genEventName();
     this.#docInfo = {
-      title: document.title,
+      title: truncateWords(document.title),
       description: this.#getDocDescription(),
     };
     this.#combinedSkipsRegex = new RegExp(
@@ -1624,7 +1628,14 @@ export class Translator {
       //   injectCss && injectInternalCss(injectCss);
       // }
 
-      const { injectJs, toLang } = this.#rule;
+      const { injectJs, injectCss, toLang } = this.#rule;
+
+      if (isExt) {
+        injectCss && sendBgMsg(MSG_INJECT_CSS, injectCss);
+      } else {
+        injectCss && injectInternalCss(injectCss);
+      }
+
       if (injectJs?.trim()) {
         const apiSetting = { ...this.#apiSetting };
         const docInfo = { ...this.#docInfo };
@@ -1688,7 +1699,7 @@ export class Translator {
   // 翻译页面标题
   async #translateTitle() {
     const title = document.title;
-    this.#docInfo.title = title;
+    this.#docInfo.title = truncateWords(title);
     if (!title) return;
 
     try {
