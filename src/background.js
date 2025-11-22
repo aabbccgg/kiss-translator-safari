@@ -15,8 +15,6 @@ import {
   MSG_UPDATE_CSP,
   MSG_BUILTINAI_DETECT,
   MSG_BUILTINAI_TRANSLATE,
-  DEFAULT_CSPLIST,
-  DEFAULT_ORILIST,
   CMD_TOGGLE_TRANSLATE,
   CMD_TOGGLE_STYLE,
   CMD_OPEN_OPTIONS,
@@ -37,7 +35,7 @@ import { injectInlineJsBg, injectInternalCss } from "./libs/injector";
 import { kissLog, logger } from "./libs/log";
 import { chromeDetect, chromeTranslate } from "./libs/builtinAI";
 
-globalThis.ContextType = "BACKGROUND";
+globalThis.__KISS_CONTEXT__ = "background";
 
 const CSP_RULE_START_ID = 1;
 const ORI_RULE_START_ID = 10000;
@@ -193,19 +191,21 @@ async function registerMsgDisplayScript() {
 /**
  * 插件安装
  */
-browser.runtime.onInstalled.addListener(() => {
-  tryInitDefaultData();
+browser.runtime.onInstalled.addListener(async () => {
+  await tryInitDefaultData();
 
   //在thunderbird中注册脚本
   if (process.env.REACT_APP_CLIENT === CLIENT_THUNDERBIRD) {
     registerMsgDisplayScript();
   }
 
+  const { contextMenuType, csplist, orilist } = await getSettingWithDefault();
+
   // 右键菜单
-  addContextMenus();
+  addContextMenus(contextMenuType);
 
   // 禁用CSP
-  updateCspRules({ csplist: DEFAULT_CSPLIST, orilist: DEFAULT_ORILIST });
+  updateCspRules({ csplist, orilist });
 });
 
 /**
