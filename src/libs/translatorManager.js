@@ -4,7 +4,13 @@ import { InputTranslator } from "./inputTranslate";
 import { TransboxManager } from "./tranbox";
 import { shortcutRegister } from "./shortcut";
 import { sendIframeMsg } from "./iframe";
-import { EVENT_KISS, newI18n } from "../config";
+import {
+  EVENT_KISS_INNER,
+  EVENT_KISS_TRANSLATOR,
+  MSG_HOVERNODE_TOGGLE,
+  MSG_INPUT_TRANSLATE,
+  newI18n,
+} from "../config";
 import { touchTapListener } from "./touch";
 import { PopupManager } from "./popupManager";
 import { FabManager } from "./fabManager";
@@ -33,8 +39,9 @@ export default class TranslatorManager {
   #isUserscript;
   #isIframe;
 
-  #windowMessageHandler = null;
+  #innerMessageHandler = null;
   #browserMessageHandler = null;
+  #windowMessageHandler = null;
 
   _translator;
   _transboxManager;
@@ -68,8 +75,9 @@ export default class TranslatorManager {
       });
     }
 
-    this.#windowMessageHandler = this.#handleWindowMessage.bind(this);
+    this.#innerMessageHandler = this.#handleInnerMessage.bind(this);
     this.#browserMessageHandler = this.#handleBrowserMessage.bind(this);
+    this.#windowMessageHandler = this.#handleWindowMessage.bind(this);
   }
 
   start() {
@@ -97,12 +105,17 @@ export default class TranslatorManager {
     }
 
     // 移除消息监听器
+    window.removeEventListener(
+      EVENT_KISS_TRANSLATOR,
+      this.#innerMessageHandler
+    );
     if (this.#isUserscript) {
-      window.removeEventListener("message", this.#windowMessageHandler);
-    } else if (
-      browser.runtime.onMessage.hasListener(this.#browserMessageHandler)
-    ) {
+      window.removeEventListener("message", this.#innerMessageHandler);
+    } else {
       browser.runtime.onMessage.removeListener(this.#browserMessageHandler);
+      if (this.#isIframe) {
+        window.removeEventListener("message", this.#innerMessageHandler);
+      }
     }
 
     // 已注册的快捷键
@@ -115,9 +128,7 @@ export default class TranslatorManager {
 
     // 油猴菜单
     if (globalThis.GM && this.#menuCommandIds.length > 0) {
-      this.#menuCommandIds.forEach((id) =>
-        globalThis.GM.unregisterMenuCommand(id)
-      );
+      this.#menuCommandIds.forEach((id) => GM.unregisterMenuCommand?.(id));
       this.#menuCommandIds = [];
     }
 
@@ -134,13 +145,16 @@ export default class TranslatorManager {
 
   #setupMessageListeners() {
     if (this.#isUserscript) {
-      window.addEventListener("message", this.#windowMessageHandler);
+      window.addEventListener("message", this.#innerMessageHandler);
     } else {
       browser.runtime.onMessage.addListener(this.#browserMessageHandler);
       if (this.#isIframe) {
-        window.addEventListener("message", this.#windowMessageHandler);
+        window.addEventListener("message", this.#innerMessageHandler);
       }
     }
+
+    // 监听外部调用消息
+    window.addEventListener(EVENT_KISS_TRANSLATOR, this.#windowMessageHandler);
   }
 
   #setupTouchOperations() {
@@ -182,7 +196,13 @@ export default class TranslatorManager {
     touchModes.forEach((mode) => handleListener(mode));
   }
 
+  // 处理外部调用
   #handleWindowMessage(event) {
+    logger.debug("handle window message:", event);
+    this.#processActions(event.detail);
+  }
+
+  #handleInnerMessage(event) {
     this.#processActions(event.data);
   }
 
@@ -220,24 +240,24 @@ export default class TranslatorManager {
     if (contextMenuType === 0) return;
 
     const i18n = newI18n(uiLang || "zh");
-    const GM = globalThis.GM;
+
     this.#menuCommandIds = [
-      GM.registerMenuCommand(
+      GM.registerMenuCommand?.(
         i18n("translate_switch"),
         () => this.#processActions({ action: MSG_TRANS_TOGGLE }),
         "Q"
       ),
-      GM.registerMenuCommand(
+      GM.registerMenuCommand?.(
         i18n("toggle_style"),
         () => this.#processActions({ action: MSG_TRANS_TOGGLE_STYLE }),
         "C"
       ),
-      GM.registerMenuCommand(
+      GM.registerMenuCommand?.(
         i18n("open_menu"),
         () => this.#processActions({ action: MSG_POPUP_TOGGLE }),
         "K"
       ),
-      GM.registerMenuCommand(
+      GM.registerMenuCommand?.(
         i18n("open_setting"),
         () => window.open(process.env.REACT_APP_OPTIONSPAGE, "_blank"),
         "O"
@@ -268,7 +288,7 @@ export default class TranslatorManager {
         break;
       case MSG_OPEN_TRANBOX:
         document.dispatchEvent(
-          new CustomEvent(EVENT_KISS, {
+          new CustomEvent(EVENT_KISS_INNER, {
             detail: { action: MSG_OPEN_TRANBOX },
           })
         );
@@ -286,6 +306,12 @@ export default class TranslatorManager {
       case MSG_TRANSINPUT_TOGGLE:
         this._inputTranslator?.toggle();
         this._translator.toggleInputTranslate();
+        break;
+      case MSG_HOVERNODE_TOGGLE:
+        this._translator.toggleHoverNode();
+        break;
+      case MSG_INPUT_TRANSLATE:
+        this._inputTranslator.handleTranslate();
         break;
       default:
         logger.info(`Message action is unavailable: ${action}`);

@@ -16,7 +16,13 @@ import {
 } from "../config";
 import { interpreter } from "./interpreter";
 import { clearFetchPool } from "./pool";
-import { debounce, scheduleIdle, genEventName, truncateWords } from "./utils";
+import {
+  debounce,
+  scheduleIdle,
+  genEventName,
+  truncateWords,
+  escapeHTML,
+} from "./utils";
 import { apiTranslate } from "../apis";
 import { kissLog } from "./log";
 import { clearAllBatchQueue } from "./batchQueue";
@@ -223,9 +229,9 @@ export class Translator {
   static isBlockNode(el) {
     if (!Translator.isElementOrFragment(el)) return false;
 
+    if (el.attributes?.display?.value?.includes("inline")) return false;
     if (Translator.TAGS.INLINE.has(el.nodeName?.toUpperCase())) return false;
     if (Translator.TAGS.BLOCK.has(el.nodeName?.toUpperCase())) return true;
-    if (el.attributes?.display?.value?.includes("inline")) return false;
 
     if (Translator.displayCache.has(el)) {
       return Translator.displayCache.get(el);
@@ -324,11 +330,17 @@ export class Translator {
       return Translator.KISS_IGNORE_SELECTOR;
     }
 
-    if (this.#rule.autoScan === "false") {
-      return `${Translator.KISS_IGNORE_SELECTOR}, ${this.#rule.ignoreSelector}`;
+    const selectors = [Translator.KISS_IGNORE_SELECTOR];
+    if (this.#rule.autoScan !== "false") {
+      selectors.push(Translator.BUILTIN_IGNORE_SELECTOR);
     }
 
-    return `${Translator.KISS_IGNORE_SELECTOR}, ${Translator.BUILTIN_IGNORE_SELECTOR}, ${this.#rule.ignoreSelector}`;
+    const userSelector = this.#rule.ignoreSelector?.trim();
+    if (userSelector) {
+      selectors.push(userSelector);
+    }
+
+    return selectors.join(", ");
   }
 
   // 接口参数
@@ -660,7 +672,7 @@ export class Translator {
         this.#init();
       }
       if (mouseHoverKey.length === 0 && foundNode) {
-        this.#processNode(foundNode);
+        this.#toggleTargetNode(foundNode);
       }
     }, 100);
   }
@@ -680,6 +692,11 @@ export class Translator {
     if (!targetNode || !this.#observedNodes.has(targetNode)) return;
 
     this.#toggleTargetNode(targetNode);
+  }
+
+  // 触发段落翻译
+  toggleHoverNode() {
+    this.#handleKeyDown();
   }
 
   // 切换节点翻译状态
@@ -1181,7 +1198,7 @@ export class Translator {
       parentStyle,
       grandStyle,
       // detectRemote,
-      // toLang,
+      toLang,
       // skipLangs = [],
       highlightWords,
     } = this.#rule;
@@ -1270,13 +1287,20 @@ export class Translator {
       if (transEndHook?.trim()) {
         try {
           interpreter.run(`exports.transEndHook = ${transEndHook}`);
-          interpreter.exports.transEndHook({
-            hostNode,
-            parentNode,
-            nodes,
-            wrapperNode: wrapper,
-            innerNode: inner,
-          });
+          interpreter.exports.transEndHook(
+            {
+              hostNode,
+              parentNode,
+              nodes,
+              wrapperNode: wrapper,
+              innerNode: inner,
+            },
+            {
+              text: processedString,
+              fromLang: deLang || this.#rule.fromLang,
+              toLang,
+            }
+          );
         } catch (err) {
           kissLog("transEndHook", err);
         }
@@ -1332,7 +1356,7 @@ export class Translator {
           });
         }
 
-        return text;
+        return escapeHTML(text);
       }
 
       // 元素节点

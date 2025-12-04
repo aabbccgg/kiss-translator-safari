@@ -55,6 +55,15 @@ export default function TranForm({
   const [deLoading, setDeLoading] = useState(false);
 
   useEffect(() => {
+    if (isValidWord(text)) {
+      const event = new CustomEvent("kiss-add-word", {
+        detail: { word: text },
+      });
+      document.dispatchEvent(event);
+    }
+  }, [text]);
+
+  useEffect(() => {
     if (!editMode) {
       setEditText(text);
     }
@@ -107,7 +116,8 @@ export default function TranForm({
   );
 
   const isWord = useMemo(() => isValidWord(text), [text]);
-  const xs = useMemo(() => (isPlaygound ? 3 : 4), [isPlaygound]);
+  const xs = useMemo(() => (isPlaygound ? 6 : 4), [isPlaygound]);
+  const md = useMemo(() => (isPlaygound ? 3 : 4), [isPlaygound]);
 
   return (
     <Stack spacing={simpleStyle ? 1 : 2}>
@@ -115,7 +125,7 @@ export default function TranForm({
         <>
           <Box>
             <Grid container spacing={2} columns={12}>
-              <Grid item xs={xs}>
+              <Grid item xs={xs} md={md}>
                 <TextField
                   select
                   SelectProps={{
@@ -138,7 +148,7 @@ export default function TranForm({
                   ))}
                 </TextField>
               </Grid>
-              <Grid item xs={xs}>
+              <Grid item xs={xs} md={md}>
                 <TextField
                   select
                   SelectProps={{ MenuProps: { disablePortal: !isPlaygound } }}
@@ -158,7 +168,7 @@ export default function TranForm({
                   ))}
                 </TextField>
               </Grid>
-              <Grid item xs={xs}>
+              <Grid item xs={xs} md={md}>
                 <TextField
                   select
                   SelectProps={{ MenuProps: { disablePortal: !isPlaygound } }}
@@ -181,7 +191,7 @@ export default function TranForm({
 
               {isPlaygound && (
                 <>
-                  <Grid item xs={xs}>
+                  <Grid item xs={xs} md={md}>
                     <TextField
                       select
                       SelectProps={{
@@ -203,7 +213,7 @@ export default function TranForm({
                       ))}
                     </TextField>
                   </Grid>
-                  <Grid item xs={xs}>
+                  <Grid item xs={xs} md={md}>
                     <TextField
                       select
                       SelectProps={{
@@ -226,7 +236,7 @@ export default function TranForm({
                       ))}
                     </TextField>
                   </Grid>
-                  <Grid item xs={xs}>
+                  <Grid item xs={xs} md={md}>
                     <TextField
                       select
                       SelectProps={{
@@ -249,7 +259,7 @@ export default function TranForm({
                       ))}
                     </TextField>
                   </Grid>
-                  <Grid item xs={xs}>
+                  <Grid item xs={xs} md={md}>
                     <TextField
                       select
                       SelectProps={{
@@ -272,7 +282,7 @@ export default function TranForm({
                       ))}
                     </TextField>
                   </Grid>
-                  <Grid item xs={xs}>
+                  <Grid item xs={xs} md={md}>
                     <TextField
                       fullWidth
                       size="small"

@@ -10,7 +10,7 @@ import {
   OPT_TRANBOX_TRIGGER_CLICK,
   OPT_TRANBOX_TRIGGER_HOVER,
   OPT_TRANBOX_TRIGGER_SELECT,
-  EVENT_KISS,
+  EVENT_KISS_INNER,
 } from "../../config";
 import { isMobile } from "../../libs/mobile";
 import { kissLog } from "../../libs/log";
@@ -207,9 +207,9 @@ export default function Slection({
       }
     };
 
-    document.addEventListener(EVENT_KISS, handleStatusUpdate);
+    document.addEventListener(EVENT_KISS_INNER, handleStatusUpdate);
     return () => {
-      document.removeEventListener(EVENT_KISS, handleStatusUpdate);
+      document.removeEventListener(EVENT_KISS_INNER, handleStatusUpdate);
     };
   }, [handleToggle]);
 
@@ -223,7 +223,7 @@ export default function Slection({
       const menuCommandIds = [];
       contextMenuType !== 0 &&
         menuCommandIds.push(
-          GM.registerMenuCommand(
+          GM.registerMenuCommand?.(
             langMap("translate_selected_text"),
             (event) => {
               handleTranbox();
@@ -234,7 +234,7 @@ export default function Slection({
 
       return () => {
         menuCommandIds.forEach((id) => {
-          GM.unregisterMenuCommand(id);
+          GM.unregisterMenuCommand?.(id);
         });
       };
     } catch (err) {

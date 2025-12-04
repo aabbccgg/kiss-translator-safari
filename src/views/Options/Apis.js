@@ -46,6 +46,9 @@ import {
   OPT_TRANS_AZUREAI,
   defaultNobatchPrompt,
   defaultNobatchUserPrompt,
+  defaultSystemPrompt,
+  defaultSystemPromptXml,
+  defaultSystemPromptLines,
 } from "../../config";
 import ValidationInput from "../../hooks/ValidationInput";
 
@@ -127,7 +130,7 @@ function ApiFields({ apiSlug, isUserApi, deleteApi }) {
   }, [api, formData]);
 
   const handleChange = (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     let { name, value, type, checked } = e.target;
 
     if (type === "checkbox" || type === "switch") {
@@ -137,6 +140,20 @@ function ApiFields({ apiSlug, isUserApi, deleteApi }) {
     setFormData((prevData) => ({
       ...prevData,
       [name]: value,
+    }));
+  };
+
+  const handleUpdateSystemPrompt = (e) => {
+    const promptMap = {
+      json: defaultSystemPrompt,
+      xml: defaultSystemPromptXml,
+      textlines: defaultSystemPromptLines,
+    };
+    const systemPrompt =
+      promptMap[e.target.dataset.output] || defaultSystemPromptXml;
+    setFormData((prevData) => ({
+      ...prevData,
+      systemPrompt,
     }));
   };
 
@@ -237,7 +254,7 @@ function ApiFields({ apiSlug, isUserApi, deleteApi }) {
             />
             <TextField
               size="small"
-              label={"KEY"}
+              label={"Key"}
               name="key"
               value={key}
               onChange={handleChange}
@@ -267,7 +284,7 @@ function ApiFields({ apiSlug, isUserApi, deleteApi }) {
                 <TextField
                   size="small"
                   fullWidth
-                  label={"MODEL"}
+                  label={"Model"}
                   name="model"
                   value={model}
                   onChange={handleChange}
@@ -289,7 +306,7 @@ function ApiFields({ apiSlug, isUserApi, deleteApi }) {
                 <ValidationInput
                   size="small"
                   fullWidth
-                  label={"Temperature"}
+                  label={"Temperature (0.0-2.0)"}
                   type="number"
                   name="temperature"
                   value={temperature}
@@ -319,19 +336,49 @@ function ApiFields({ apiSlug, isUserApi, deleteApi }) {
           {useBatchFetch ? (
             <TextField
               size="small"
-              label={"BATCH SYSTEM PROMPT"}
+              label={"Batch System Prompt"}
               name="systemPrompt"
               value={systemPrompt}
               onChange={handleChange}
               multiline
               maxRows={10}
-              helperText={i18n("system_prompt_helper")}
+              helperText={
+                <>
+                  {i18n("system_prompt_helper_1")}
+                  <Link
+                    component="button"
+                    sx={{ margin: "0 1em" }}
+                    data-output="json"
+                    onClick={handleUpdateSystemPrompt}
+                  >
+                    {i18n("json_output")}
+                  </Link>
+                  <Link
+                    component="button"
+                    sx={{ margin: "0 1em" }}
+                    data-output="xml"
+                    onClick={handleUpdateSystemPrompt}
+                  >
+                    {i18n("xml_output")}
+                  </Link>
+                  <Link
+                    component="button"
+                    sx={{ margin: "0 1em" }}
+                    data-output="textlines"
+                    onClick={handleUpdateSystemPrompt}
+                  >
+                    {i18n("textlines_output")}
+                  </Link>
+                  <br />
+                  {i18n("system_prompt_helper_2")}
+                </>
+              }
             />
           ) : (
             <>
               <TextField
                 size="small"
-                label={"SYSTEM PROMPT"}
+                label={"System Prompt"}
                 name="nobatchPrompt"
                 value={nobatchPrompt}
                 onChange={handleChange}
@@ -340,7 +387,7 @@ function ApiFields({ apiSlug, isUserApi, deleteApi }) {
               />
               <TextField
                 size="small"
-                label={"USER PROMPT"}
+                label={"User Prompt"}
                 name="nobatchUserPrompt"
                 value={nobatchUserPrompt}
                 onChange={handleChange}
@@ -352,7 +399,7 @@ function ApiFields({ apiSlug, isUserApi, deleteApi }) {
 
           <TextField
             size="small"
-            label={"SUBTITLE PROMPT"}
+            label={"Subtitle Prompt"}
             name="subtitlePrompt"
             value={subtitlePrompt}
             onChange={handleChange}
@@ -479,7 +526,7 @@ function ApiFields({ apiSlug, isUserApi, deleteApi }) {
                 name="batchInterval"
                 value={batchInterval}
                 onChange={handleChange}
-                min={100}
+                min={10}
                 max={10000}
               />
             </Grid>
@@ -588,8 +635,8 @@ function ApiFields({ apiSlug, isUserApi, deleteApi }) {
               name="httpTimeout"
               value={httpTimeout}
               onChange={handleChange}
-              min={1000}
-              max={60000}
+              min={100}
+              max={600000}
             />
           </Grid>
           <Grid item xs={12} sm={12} md={6} lg={3}></Grid>
