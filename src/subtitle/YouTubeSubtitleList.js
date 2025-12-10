@@ -202,7 +202,7 @@ export class YouTubeSubtitleList {
 
     // 3. 渲染字幕列表内容
     const ul = this.subtitleListEl.querySelector("ul");
-    ul.innerHTML = "";
+    ul.replaceChildren();
     this._cachedSubtitleItems = []; // 重置缓存
 
     // 使用 DocumentFragment 批量插入，减少重排
@@ -228,8 +228,9 @@ export class YouTubeSubtitleList {
     if (!this.container) {
       this.container = document.createElement("div");
       this.container.id = "kiss-youtube-subtitle-list-container";
+      this.container.className = "notranslate";
       Object.assign(this.container.style, {
-        height: "calc(100vh - 250px)",
+        height: "calc(100vh - 220px)",
         maxHeight: "none",
         zIndex: "999",
         background: "rgba(255, 255, 255, 0.9)",
@@ -399,7 +400,7 @@ export class YouTubeSubtitleList {
     if (this.bilingualSubtitles.length !== this._cachedSubtitleItems.length) {
       const ul = this.subtitleListEl.querySelector("ul");
       if (ul) {
-        ul.innerHTML = "";
+        ul.replaceChildren();
         this._cachedSubtitleItems = [];
         const fragment = document.createDocumentFragment();
         this.bilingualSubtitles.forEach((sub, i) => {
@@ -447,7 +448,7 @@ export class YouTubeSubtitleList {
   _renderVocabulary() {
     if (!this.vocabularyListEl) return;
 
-    this.vocabularyListEl.innerHTML = "";
+    this.vocabularyListEl.replaceChildren();
     const exportContainer = this._createExportContainer();
     const vocabListContainer = this._createVocabListContainer();
 

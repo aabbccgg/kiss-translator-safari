@@ -2,6 +2,8 @@ import { logger } from "../libs/log.js";
 import { truncateWords, throttle } from "../libs/utils.js";
 import { apiTranslate } from "../apis/index.js";
 import { apiMicrosoftDict } from "../apis/index.js";
+import { trustedTypesHelper } from "../libs/trustedTypes.js";
+import { isMobile } from "../libs/mobile.js";
 
 // 添加CSS样式用于高亮显示悬停的单词
 const addWordHoverStyles = () => {
@@ -145,7 +147,7 @@ export class BilingualSubtitleManager {
     );
 
     // todo: 使用 @emotion/css
-    if (this.#setting.isEnhance !== false) {
+    if (!isMobile && this.#setting.isEnhance !== false) {
       addWordHoverStyles();
     }
   }
@@ -247,7 +249,7 @@ export class BilingualSubtitleManager {
 
     this.#enableDragging(this.#paperEl, container, this.#captionWindowEl);
 
-    if (this.#setting.isEnhance !== false) {
+    if (!isMobile && this.#setting.isEnhance !== false) {
       // 添加鼠标悬停事件监听器
       this.#captionWindowEl.addEventListener(
         "mouseover",
@@ -345,8 +347,9 @@ export class BilingualSubtitleManager {
     // 创建提示框
     this.#tooltipEl = document.createElement("div");
     this.#tooltipEl.className = "kiss-word-tooltip";
-    this.#tooltipEl.innerHTML =
-      '<div class="kiss-word-loading">Looking up...</div>';
+    this.#tooltipEl.innerHTML = trustedTypesHelper.createHTML(
+      '<div class="kiss-word-loading">Looking up...</div>'
+    );
 
     // 将提示框定位在播放器右上角
     const videoContainer = this.#videoEl.parentElement?.parentElement;
@@ -459,15 +462,16 @@ export class BilingualSubtitleManager {
         }
 
         if (this.#tooltipEl) {
-          this.#tooltipEl.innerHTML = content;
+          this.#tooltipEl.innerHTML = trustedTypesHelper.createHTML(content);
         }
       } else {
         if (this.#tooltipEl) {
-          this.#tooltipEl.innerHTML = `<div class="kiss-word-tooltip-header">
+          this.#tooltipEl.innerHTML =
+            trustedTypesHelper.createHTML(`<div class="kiss-word-tooltip-header">
           <span>${word}</span>
           <button class="kiss-word-tooltip-close" onclick="this.closest('.kiss-word-tooltip').remove()">×</button>
         </div>
-        <div class="kiss-word-definition">No definition found</div>`;
+        <div class="kiss-word-definition">No definition found</div>`);
         }
       }
     } catch (error) {
@@ -489,11 +493,12 @@ export class BilingualSubtitleManager {
       document.dispatchEvent(event);
 
       if (this.#tooltipEl) {
-        this.#tooltipEl.innerHTML = `<div class="kiss-word-tooltip-header">
+        this.#tooltipEl.innerHTML =
+          trustedTypesHelper.createHTML(`<div class="kiss-word-tooltip-header">
         <span>${word}</span>
         <button class="kiss-word-tooltip-close" onclick="this.closest('.kiss-word-tooltip').remove()">×</button>
       </div>
-      <div class="kiss-word-definition">Failed to load definition</div>`;
+      <div class="kiss-word-definition">Failed to load definition</div>`);
       }
     }
   }
@@ -653,10 +658,14 @@ export class BilingualSubtitleManager {
       // 创建带有单词标记的字幕内容
       const p1 = document.createElement("p");
       p1.style.cssText = this.#setting.originStyle;
-      p1.innerHTML =
-        this.#setting.isEnhance !== false
-          ? this.#wrapWordsWithSpans(subtitle.text)
-          : truncateWords(subtitle.text);
+
+      if (!isMobile && this.#setting.isEnhance !== false) {
+        p1.innerHTML = trustedTypesHelper.createHTML(
+          this.#wrapWordsWithSpans(subtitle.text)
+        );
+      } else {
+        p1.textContent = truncateWords(subtitle.text);
+      }
 
       const p2 = document.createElement("p");
       p2.style.cssText = this.#setting.translationStyle;
