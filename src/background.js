@@ -19,10 +19,12 @@ import {
   CMD_TOGGLE_STYLE,
   CMD_OPEN_OPTIONS,
   CMD_OPEN_TRANBOX,
+  CMD_OPEN_SEPARATE_WINDOW,
   CLIENT_THUNDERBIRD,
   MSG_SET_LOGLEVEL,
   MSG_CLEAR_CACHES,
   MSG_OPEN_SEPARATE_WINDOW,
+  STOKEY_SEPARATE_WINDOW,
 } from "./config";
 import { getSettingWithDefault, tryInitDefaultData } from "./libs/storage";
 import { trySyncSettingAndRules } from "./libs/sync";
@@ -46,6 +48,138 @@ const CSP_REMOVE_HEADERS = [
   `x-webkit-csp`,
   `x-content-security-policy`,
 ];
+
+// 独立窗口ID
+let separateWindowId = null;
+// 记录窗口最后一次有效的位置和大小
+let lastKnownBounds = null;
+
+const DEFAULT_SEPARATE_WINDOW_BOUNDS = {
+  left: 100,
+  top: 100,
+  width: 400,
+  height: 400,
+};
+
+/**
+ * 将独立窗口数据写入存储
+ */
+async function persistSeparateWindowBounds(bounds) {
+  if (!bounds) return;
+  try {
+    await browser.storage.local.set({ [STOKEY_SEPARATE_WINDOW]: bounds });
+    kissLog("Final separate window bounds saved to storage", bounds);
+  } catch (err) {
+    kissLog("Save separate window bounds error", err);
+  }
+}
+
+/**
+ * 打开独立窗口
+ */
+async function openSeparateWindowWithSavedBounds() {
+  try {
+    // 如果窗口已存在，则聚焦它而不是重复创建
+    if (separateWindowId !== null) {
+      const allWindows = await browser.windows.getAll();
+      const existingWin = allWindows.find((w) => w.id === separateWindowId);
+      if (existingWin) {
+        await browser.windows.update(separateWindowId, { focused: true });
+        kissLog("Separate window is ready");
+        return existingWin;
+      }
+    }
+
+    const stored = await browser.storage.local.get(STOKEY_SEPARATE_WINDOW);
+    const saved = stored && stored[STOKEY_SEPARATE_WINDOW];
+    const bounds = Object.assign(
+      {},
+      DEFAULT_SEPARATE_WINDOW_BOUNDS,
+      saved || {}
+    );
+
+    const win = await browser.windows.create({
+      url: "popup.html#tranbox",
+      type: "popup",
+      left: Math.round(bounds.left),
+      top: Math.round(bounds.top),
+      width: Math.round(bounds.width),
+      height: Math.round(bounds.height),
+      focused: true,
+    });
+
+    separateWindowId = win.id;
+    lastKnownBounds = {
+      left: win.left,
+      top: win.top,
+      width: win.width,
+      height: win.height,
+    };
+
+    return win;
+  } catch (err) {
+    kissLog("open separate window error", err);
+  }
+}
+
+/**
+ * 更新内存中的坐标缓存
+ */
+async function updateCacheFromActual(windowId) {
+  try {
+    const win = await browser.windows.get(windowId);
+    if (win && win.state === "normal") {
+      lastKnownBounds = {
+        left: Math.round(win.left),
+        top: Math.round(win.top),
+        width: Math.round(win.width),
+        height: Math.round(win.height),
+      };
+      kissLog("Bounds cached via fallback:", lastKnownBounds);
+      // todo: 获取到的left和top均为0？
+      // todo: firefox 每重新打开一次，窗口愈来愈大？
+    }
+  } catch (e) {
+    // 窗口可能已关闭
+  }
+}
+
+// 监听焦点变化(兼容Firefox)
+browser.windows.onFocusChanged.addListener(async (windowId) => {
+  if (separateWindowId !== null) {
+    await updateCacheFromActual(separateWindowId);
+  }
+});
+
+/**
+ * 监听位置变化：仅更新内存，不操作 Storage
+ * Firefox 不支持 browser.windows.onBoundsChanged
+ */
+browser.windows?.onBoundsChanged?.addListener((win) => {
+  if (separateWindowId !== null && win.id === separateWindowId) {
+    lastKnownBounds = {
+      left: win.left ?? lastKnownBounds.left,
+      top: win.top ?? lastKnownBounds.top,
+      width: win.width ?? lastKnownBounds.width,
+      height: win.height ?? lastKnownBounds.height,
+    };
+    // todo: 获取到的left和top均为0？
+  }
+});
+
+/**
+ * 监听窗口关闭：此时执行持久化
+ */
+browser.windows.onRemoved.addListener(async (windowId) => {
+  if (windowId === separateWindowId) {
+    if (lastKnownBounds) {
+      await persistSeparateWindowBounds(lastKnownBounds);
+    }
+
+    separateWindowId = null;
+    lastKnownBounds = null;
+  }
+});
 
 /**
  * 添加右键菜单
@@ -278,16 +412,7 @@ const messageHandlers = {
   [MSG_BUILTINAI_TRANSLATE]: (args) => chromeTranslate(args),
   [MSG_SET_LOGLEVEL]: (args) => logger.setLevel(args),
   [MSG_CLEAR_CACHES]: () => tryClearCaches(),
-  [MSG_OPEN_SEPARATE_WINDOW]: () =>
-    browser.windows.create({
-      url: "popup.html#window",
-      type: "popup",
-      width: 400,
-      height: 400,
-      left: 100,
-      top: 100,
-      focused: true,
-    }),
+  [MSG_OPEN_SEPARATE_WINDOW]: () => openSeparateWindowWithSavedBounds(),
 };
 
 /**
@@ -320,6 +445,12 @@ browser.commands.onCommand.addListener((command) => {
       break;
     case CMD_OPEN_OPTIONS:
       browser.runtime.openOptionsPage();
+      break;
+    case CMD_OPEN_SEPARATE_WINDOW:
+      // invoke the handler to open the independent window
+      if (messageHandlers[MSG_OPEN_SEPARATE_WINDOW]) {
+        messageHandlers[MSG_OPEN_SEPARATE_WINDOW]();
+      }
       break;
     default:
   }
